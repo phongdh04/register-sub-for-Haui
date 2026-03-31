@@ -1,6 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const ngNhpTruynThngQunLPhin = () => {
+const NgNhpTruynThngQunLPhin = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:8080/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Lưu thông tin JWT Authentication
+        localStorage.setItem('jwt_token', data.token);
+        localStorage.setItem('user_roles', JSON.stringify(data.roles));
+        localStorage.setItem('username', data.username);
+
+        // Chuyển hướng theo Role (RBAC Redirect)
+        if (data.roles.includes('ROLE_ADMIN')) {
+          navigate('/admin');
+        } else if (data.roles.includes('ROLE_LECTURER')) {
+          navigate('/teacher');
+        } else {
+          navigate('/student');
+        }
+      } else {
+        setErrorMsg('Sai Tên đăng nhập hoặc Mật khẩu!');
+      }
+    } catch (err) {
+      setErrorMsg('Lỗi kết nối đến Server. Vui lòng thử lại!');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       
@@ -58,15 +104,23 @@ const ngNhpTruynThngQunLPhin = () => {
 <p className="text-on-surface-variant text-sm font-medium">Vui lòng nhập thông tin tài khoản của bạn để tiếp tục.</p>
 </div>
 {/*  Form Section  */}
-<div className="space-y-6">
+<form className="space-y-6" onSubmit={handleLogin}>
+{/*  Error Message  */}
+{errorMsg && (
+  <div className="p-4 rounded-xl bg-error/10 border border-error/20 text-error font-medium flex items-center gap-3">
+    <span className="material-symbols-outlined">error</span>
+    {errorMsg}
+  </div>
+)}
 {/*  MSSV Input  */}
 <div className="space-y-2">
-<label className="text-label-md font-bold text-on-surface-variant tracking-wider uppercase ml-1" htmlFor="mssv">Mã Sinh Viên (MSSV)</label>
+<label className="text-label-md font-bold text-on-surface-variant tracking-wider uppercase ml-1" htmlFor="mssv">Tài Khoản (MSSV / Mã GV)</label>
 <div className="relative group">
 <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
 <span className="material-symbols-outlined text-xl">badge</span>
 </div>
-<input className="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-medium placeholder:text-outline/60 transition-all duration-200" id="mssv" placeholder="VD: 20241234" type="text"/>
+<input className="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-medium placeholder:text-outline/60 transition-all duration-200" id="mssv" placeholder="VD: 20241234" type="text"
+       value={username} onChange={(e) => setUsername(e.target.value)} required />
 </div>
 </div>
 {/*  Password Input  */}
@@ -79,7 +133,8 @@ const ngNhpTruynThngQunLPhin = () => {
 <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
 <span className="material-symbols-outlined text-xl">lock</span>
 </div>
-<input className="w-full pl-12 pr-12 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-medium placeholder:text-outline/60 transition-all duration-200" id="password" placeholder="••••••••" type="password"/>
+<input className="w-full pl-12 pr-12 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-medium placeholder:text-outline/60 transition-all duration-200" id="password" placeholder="••••••••" type="password"
+       value={password} onChange={(e) => setPassword(e.target.value)} required />
 <button className="absolute inset-y-0 right-4 flex items-center text-outline hover:text-on-surface-variant transition-colors" type="button">
 <span className="material-symbols-outlined">visibility</span>
 </button>
@@ -87,8 +142,8 @@ const ngNhpTruynThngQunLPhin = () => {
 </div>
 {/*  Action Buttons  */}
 <div className="space-y-4 pt-4">
-<button className="w-full py-4 rounded-full btn-gradient text-white font-headline font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
-                            Đăng nhập
+<button type="submit" disabled={loading} className="w-full py-4 rounded-full btn-gradient text-white font-headline font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-75 disabled:scale-100 flex justify-center items-center gap-2">
+                            {loading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : 'Đăng nhập'}
                         </button>
 <div className="relative flex items-center py-4">
 <div className="flex-grow border-t border-surface-container-highest"></div>
@@ -97,10 +152,10 @@ const ngNhpTruynThngQunLPhin = () => {
 </div>
 <button className="w-full py-4 flex items-center justify-center gap-3 rounded-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-headline font-semibold hover:bg-surface-container-high transition-all duration-200">
 <img alt="Email Icon" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBObjQ55-B9umijUU6d6Uy98tjMeMUDs5dOGaovLrF5k0ncCREUCpRGklRl7p_7UzNldWY3bBeCOmsNjdQ24YtAZTueB0V9I0g-CUDgOdW2fldzD6iIa9CNk2IQxFyf-q5UXNA3_szDvLyyewVA8lza_RmqaDWaIcQyATIFsrCDr0a147rryV2K9wQqFCc0rC3YZWKu339mFhd34WAUBrcGkPiViw6Kk9W8SHnjIetJm4mJbpzcwJZWc5PWi_SUhfoa6BGNelWfyo4d"/>
-                            Đăng nhập bằng Email Trường
+                        Đăng nhập bằng Email Trường
                         </button>
 </div>
-</div>
+</form>
 {/*  Footer Links  */}
 <footer className="mt-12 text-center">
 <p className="text-on-surface-variant text-sm font-medium">
@@ -130,4 +185,4 @@ const ngNhpTruynThngQunLPhin = () => {
   );
 };
 
-export default ngNhpTruynThngQunLPhin;
+export default NgNhpTruynThngQunLPhin;
