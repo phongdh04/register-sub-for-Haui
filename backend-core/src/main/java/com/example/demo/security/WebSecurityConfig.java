@@ -55,9 +55,17 @@ public class WebSecurityConfig {
     // Spring Boot 3.4+ Syntax avoids deprecated .and()
     http.csrf(csrf -> csrf.disable())
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> 
-            auth.requestMatchers("/api/auth/**").permitAll()
+        .authorizeHttpRequests(auth ->
+            auth
+                .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                // Data Master: GET public; POST/PUT/DELETE controlled by @PreAuthorize
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/khoa/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/nganh-dao-tao/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/hoc-phan/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/hoc-ky/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/giang-vien/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/lop-hoc-phan/**").permitAll()
                 .anyRequest().authenticated()
         );
 
