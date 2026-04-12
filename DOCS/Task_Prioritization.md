@@ -18,7 +18,7 @@
 | 3 | Cây Khung Chương Trình (Degree Audit) | STUDENT | **🟠 P1-High** | ⬜ Todo | SV phải xem khung chương trình mới lấy ra danh sách mã môn cần Học. |
 | 4 | Kiểm tra tiến độ học tập (Transcript/Bảng điểm)| STUDENT | **🟠 P1-High** | ⬜ Todo | Cơ sở để xét điều kiện cảnh cáo học vụ và nợ tín chỉ. |
 | 5 | Tính năng Trước Giờ G (Giỏ hàng Pre-Registration)| STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng tiện ích, bản nháp, có thể bỏ qua để test lõi thực tế (Đăng ký thẳng) trước. |
-| 6 | Lọc Môn Đỉnh Cao (Tìm kiếm môn học) | STUDENT | **🟠 P1-High** | ⬜ Todo | Core API lấy data. Ứng dụng Builder Pattern ghép nối Query. |
+| 6 | Lọc Môn Đỉnh Cao (Tìm kiếm môn học) | STUDENT | **🟠 P1-High** | ✅ **Done** | JPA Specification (Builder Pattern) dynamic query: keyword + idHocKy + soTinChi + loaiMon + chiConCho. Page + Sort. API: GET /api/v1/courses. |
 | 7 | Thuật Toán Logic Đóng Chốt (Validation Rules) | STUDENT | **🟠 P1-High** | ✅ **Done** | Chain of Responsibility: DuplicateRegistration → ScheduleConflict → PrerequisiteCourse + Kafka Consumer cầu nối Go→Java. |
 | 8 | Ví Sinh Viên (Student Wallet) | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng ví nội bộ làm sau khi xong cổng thanh toán chính thức API. |
 | 9 | Thanh Toán QR Code (Open API VNPay/MoMo) | STUDENT | **🟠 P1-High** | ⬜ Todo | Chốt công nợ nhanh. Thỏa mãn Pattern Adapter cho Hội đồng chấm điểm. |
@@ -45,10 +45,11 @@
 4. **Giai đoạn 4 (Phụ trợ & Trang trí - Tuần 4):** Xử lý luồng P2 và P3 còn lại, test Performance JMeter.
 
 ---
-## P0 Checklist
+## P0 + P1 Checklist
 - [x] Task 20 - Auth/JWT Login (`AuthController`, `WebSecurityConfig`, JWT)
 - [x] Task 21 - RBAC (`@EnableMethodSecurity`, `@PreAuthorize`, Role enum)
 - [x] Task 1 - Dashboard SV (Frontend UI: `DashboardSinhVienTrangCh.jsx`)
 - [x] Task 13 - Data Master API (Entities: Khoa, NganhDaoTao, HocKy, GiangVien, HocPhan, LopHocPhan, DangKyHocPhan, SinhVien, HoSoSinhVien + Repos + Services + Controllers + GlobalExceptionHandler)
 - [x] Task 12 - Setup Queue/Redis/Kafka (Go service) - Cấu trúc: config/ infra/ domain/ service/ handler/ + Dockerfile + docker-compose cập nhật
 - [x] Task 7 - Kafka Consumer + Chain of Responsibility Validation (DuplicateRegistration → ScheduleConflict → PrerequisiteCourse) + DangKyHocPhanServiceImpl + SinhVienRepository
+- [x] Task 6 - Tìm kiếm môn học: CourseSearchRequest + CourseSearchSpecification (JPA Specification Builder Pattern) + ICourseSearchService + CourseSearchServiceImpl + CourseSearchController (GET /api/v1/courses)
