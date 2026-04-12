@@ -113,7 +113,8 @@ public class CourseSearchServiceImpl implements ICourseSearchService {
                 .dieuKienRangBuocJson(lop.getHocPhan().getDieuKienRangBuocJson())
                 // Học kỳ
                 .idHocKy(lop.getHocKy().getIdHocKy())
-                .tenHocKy(lop.getHocKy().getTenHocKy())
+                // Tạo tên học kỳ: "Học kỳ X (Y)"
+                .tenHocKy("Học kỳ " + lop.getHocKy().getKyThu() + " (" + lop.getHocKy().getNamHoc() + ")")
                 // Giảng viên (nullable)
                 .idGiangVien(gv != null ? gv.getIdGiangVien() : null)
                 .tenGiangVien(gv != null ? gv.getTenGiangVien() : null)
