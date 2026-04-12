@@ -2,6 +2,7 @@ package com.example.demo.repository;
 
 import com.example.demo.domain.entity.LopHocPhan;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,10 +13,13 @@ import java.util.Optional;
 
 /**
  * Repository cho bảng LopHocPhan - Bottleneck chính.
+ *
+ * Kế thừa JpaSpecificationExecutor để hỗ trợ Dynamic Query (Task 6 - Search).
  * Có query atomic update siSoThucTe để tránh Race Condition khi sync từ Redis.
  */
 @Repository
-public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long> {
+public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
+        JpaSpecificationExecutor<LopHocPhan> {  // ← Thêm cho Task 6 (Tìm kiếm động)
 
     Optional<LopHocPhan> findByMaLopHp(String maLopHp);
 
