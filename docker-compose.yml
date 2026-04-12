@@ -49,17 +49,27 @@ services:
       - eduport_network
     restart: unless-stopped
     
-  # CỔNG GO (DÙNG ĐỂ CHẠY QUEUE WORKER NẾU SAU NÀY ĐÓNG GÓI DOCKER IMAGE)
-  # go-backend:
-  #   build: ./backend-queue
-  #   container_name: eduport-go-queue
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - redis
-  #     - kafka
-  #   networks:
-  #     - eduport_network
+  # 🚀 GO QUEUE SERVICE – Cổng Giờ Vàng (Task 12)
+  go-queue:
+    build: ./backend-queue
+    container_name: eduport-go-queue
+    ports:
+      - "3000:3000"
+    environment:
+      SERVER_PORT: "3000"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: "eduport_redis"
+      REDIS_DB: "0"
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "eduport.dang-ky-hoc-phan"
+      DATABASE_DSN: "host=postgres user=eduport_user password=eduport_password dbname=eduport_db port=5432 sslmode=disable TimeZone=Asia/Ho_Chi_Minh"
+    depends_on:
+      - redis
+      - kafka
+      - postgres
+    networks:
+      - eduport_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:

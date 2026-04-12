@@ -32,6 +32,8 @@ target/
 
 # Golang
 backend-queue/backend-queue
+backend-queue/queue-service
+backend-queue/queue-service.exe
 *.exe
 *.exe~
 *.dll
