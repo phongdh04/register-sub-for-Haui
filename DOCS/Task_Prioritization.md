@@ -22,7 +22,7 @@
 | 7 | Thuật Toán Logic Đóng Chốt (Validation Rules) | STUDENT | **🟠 P1-High** | ✅ **Done** | Chain of Responsibility: DuplicateRegistration → ScheduleConflict → PrerequisiteCourse + Kafka Consumer cầu nối Go→Java. |
 | 8 | Ví Sinh Viên (Student Wallet) | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng ví nội bộ làm sau khi xong cổng thanh toán chính thức API. |
 | 9 | Thanh Toán QR Code (Open API VNPay/MoMo) | STUDENT | **🟠 P1-High** | ⬜ Todo | Chốt công nợ nhanh. Thỏa mãn Pattern Adapter cho Hội đồng chấm điểm. |
-| 10 | Dịch vụ Thời Khóa Biểu thông minh | STUDENT | **🟠 P1-High** | ⬜ Todo | Đích cuối của môn Đăng ký học phần thành công là phải in ra được Lịch này. |
+| 10 | Dịch vụ Thời Khóa Biểu thông minh | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/timetable/me` lấy dữ liệu thật từ đăng ký học phần + `thoi_khoa_bieu_json`, render UI realtime theo JWT Student. |
 | 11 | Lịch Thi & Đánh Giá Giảng Viên | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Modules Râu ria (Đánh giá chỉ là Form lưu Database). |
 | 12 | **Setup Cấu Hình Giờ Vàng (Queue / Kafka / Redis)**| ADMIN | **🔴 P0-Blocker** | ✅ **Done** | **🔥 TRÁI TIM DỰ ÁN GOLANG**. Triển khai: Cooldown → DistributedLock → Lua DECR Slot → Kafka Publish. |
 | 13 | Quản Lý Danh Mục Khung & Mở Lớp | ADMIN | **🔴 P0-Blocker** | ✅ **Done** | Admin phải bơm Data môn học Data Master vào CSDL thì SV mới đăng ký được. |
@@ -53,3 +53,4 @@
 - [x] Task 12 - Setup Queue/Redis/Kafka (Go service) - Cấu trúc: config/ infra/ domain/ service/ handler/ + Dockerfile + docker-compose cập nhật
 - [x] Task 7 - Kafka Consumer + Chain of Responsibility Validation (DuplicateRegistration → ScheduleConflict → PrerequisiteCourse) + DangKyHocPhanServiceImpl + SinhVienRepository
 - [x] Task 6 - Tìm kiếm môn học: CourseSearchRequest + CourseSearchSpecification (JPA Specification Builder Pattern) + ICourseSearchService + CourseSearchServiceImpl + CourseSearchController (GET /api/v1/courses)
+- [x] Task 10 - Dịch vụ Thời khóa biểu: `TimetableController` + `ITimetableService/TimetableServiceImpl` + DTO `TimetableResponse` + frontend `DchVThiKhaBiuThngMinh.jsx` gọi API `GET /api/v1/timetable/me`

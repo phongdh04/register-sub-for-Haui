@@ -14,6 +14,7 @@ import java.util.Optional;
 public interface SinhVienRepository extends JpaRepository<SinhVien, Long> {
 
     Optional<SinhVien> findByMaSinhVien(String maSinhVien);
+    Optional<SinhVien> findByTaiKhoan_Id(Long userId);
 
     boolean existsByMaSinhVien(String maSinhVien);
 }
