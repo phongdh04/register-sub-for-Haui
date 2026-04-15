@@ -41,6 +41,25 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
             @Param("hkId") Long hkId);
 
     /**
+     * Lấy danh sách lớp đã đăng ký để render TKB.
+     * Nếu hkId null thì lấy theo mọi học kỳ (service sẽ ưu tiên học kỳ hiện hành trước).
+     */
+    @Query("""
+            SELECT d FROM DangKyHocPhan d
+            JOIN FETCH d.lopHocPhan lhp
+            LEFT JOIN FETCH lhp.giangVien gv
+            JOIN FETCH lhp.hocPhan hp
+            JOIN FETCH d.hocKy hk
+            WHERE d.sinhVien.idSinhVien = :svId
+              AND d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')
+              AND (:hkId IS NULL OR hk.idHocKy = :hkId)
+            ORDER BY hk.idHocKy DESC, hp.tenHocPhan ASC
+            """)
+    List<DangKyHocPhan> findTimetableRegistrations(
+            @Param("svId") Long svId,
+            @Param("hkId") Long hkId);
+
+    /**
      * Lấy danh sách mã học phần SV đã đậu (điều kiện tiên quyết).
      * Dùng trong bước cuối Chain: KiemTraTienQuyetHandler.
      * Lưu ý: Bảng điểm sẽ được implement ở Task 4 (Transcript).
