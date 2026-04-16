@@ -15,7 +15,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | Khởi tạo Đầu não (Dashboard Sinh viên) | STUDENT | **🔴 P0-Blocker** | ✅ Done (UI) | Cổng vào bắt buộc. Không có mặt tiền thì không test được click button đi đâu. |
 | 2 | Tra cứu Hồ sơ Cá nhân & Thủ tục online | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Chỉ hiển thị info tĩnh, làm sau khi xong đăng ký môn. |
-| 3 | Cây Khung Chương Trình (Degree Audit) | STUDENT | **🟠 P1-High** | ⬜ Todo | SV phải xem khung chương trình mới lấy ra danh sách mã môn cần Học. |
+| 3 | Cây Khung Chương Trình (Degree Audit) | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/degree-audit/me` trả CTĐT theo ngành SV + mapping CTĐT↔Học phần và trạng thái hoàn thành; UI `CyKhungChngTrnhDegreeAuditRoadmap.jsx` hiển thị theo khối kiến thức. |
 | 4 | Kiểm tra tiến độ học tập (Transcript/Bảng điểm)| STUDENT | **🟠 P1-High** | ⬜ Todo | Cơ sở để xét điều kiện cảnh cáo học vụ và nợ tín chỉ. |
 | 5 | Tính năng Trước Giờ G (Giỏ hàng Pre-Registration)| STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng tiện ích, bản nháp, có thể bỏ qua để test lõi thực tế (Đăng ký thẳng) trước. |
 | 6 | Lọc Môn Đỉnh Cao (Tìm kiếm môn học) | STUDENT | **🟠 P1-High** | ✅ **Done** | JPA Specification (Builder Pattern) dynamic query: keyword + idHocKy + soTinChi + loaiMon + chiConCho. Page + Sort. API: GET /api/v1/courses. |
