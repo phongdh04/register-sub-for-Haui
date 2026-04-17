@@ -66,10 +66,36 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
      *         Hiện tại trả về list rỗng nếu chưa có bảng Diem.
      */
     @Query("""
-            SELECT d.lopHocPhan.hocPhan.maHocPhan
+            SELECT hp.maHocPhan
             FROM DangKyHocPhan d
+            JOIN d.lopHocPhan lhp
+            JOIN lhp.hocPhan hp
             WHERE d.sinhVien.idSinhVien = :svId
               AND d.trangThaiDangKy = 'THANH_CONG'
+              AND EXISTS (
+                  SELECT 1 FROM BangDiemMon bdm
+                  WHERE bdm.dangKyHocPhan = d
+                    AND bdm.diemHe4 IS NOT NULL
+                    AND bdm.diemHe4 >= 1.0
+              )
             """)
     List<String> findCompletedCourseCodes(@Param("svId") Long svId);
+
+    /**
+     * Bảng điểm / transcript: đăng ký thành công + điểm (nếu đã nhập).
+     */
+    @Query("""
+            SELECT d FROM DangKyHocPhan d
+            JOIN FETCH d.lopHocPhan lhp
+            JOIN FETCH lhp.hocPhan hp
+            JOIN FETCH d.hocKy hk
+            LEFT JOIN FETCH d.bangDiemMon bdm
+            WHERE d.sinhVien.idSinhVien = :svId
+              AND d.trangThaiDangKy = 'THANH_CONG'
+              AND (:hkId IS NULL OR hk.idHocKy = :hkId)
+            ORDER BY hk.idHocKy DESC, hp.tenHocPhan ASC
+            """)
+    List<DangKyHocPhan> findTranscriptRows(
+            @Param("svId") Long svId,
+            @Param("hkId") Long hkId);
 }

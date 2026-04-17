@@ -52,6 +52,9 @@ public class DangKyHocPhan {
     @Builder.Default
     private String trangThaiDangKy = "THANH_CONG";
 
+    @OneToOne(mappedBy = "dangKyHocPhan", fetch = FetchType.LAZY)
+    private BangDiemMon bangDiemMon;
+
     @PrePersist
     public void prePersist() {
         if (ngayDangKy == null) {

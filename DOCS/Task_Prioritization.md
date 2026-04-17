@@ -16,7 +16,7 @@
 | 1 | Khởi tạo Đầu não (Dashboard Sinh viên) | STUDENT | **🔴 P0-Blocker** | ✅ Done (UI) | Cổng vào bắt buộc. Không có mặt tiền thì không test được click button đi đâu. |
 | 2 | Tra cứu Hồ sơ Cá nhân & Thủ tục online | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Chỉ hiển thị info tĩnh, làm sau khi xong đăng ký môn. |
 | 3 | Cây Khung Chương Trình (Degree Audit) | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/degree-audit/me` trả CTĐT theo ngành SV + mapping CTĐT↔Học phần và trạng thái hoàn thành; UI `CyKhungChngTrnhDegreeAuditRoadmap.jsx` hiển thị theo khối kiến thức. |
-| 4 | Kiểm tra tiến độ học tập (Transcript/Bảng điểm)| STUDENT | **🟠 P1-High** | ⬜ Todo | Cơ sở để xét điều kiện cảnh cáo học vụ và nợ tín chỉ. |
+| 4 | Kiểm tra tiến độ học tập (Transcript/Bảng điểm)| STUDENT | **🟠 P1-High** | ✅ **Done** | Bảng `Bang_Diem_Mon` + API `GET /api/v1/transcript/me` (lọc `hocKyId`), GPA hệ 4; cập nhật prerequisite qua điểm ≥ 1.0; UI `KimTraTinHcTpTranscriptDashboard.jsx`. |
 | 5 | Tính năng Trước Giờ G (Giỏ hàng Pre-Registration)| STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng tiện ích, bản nháp, có thể bỏ qua để test lõi thực tế (Đăng ký thẳng) trước. |
 | 6 | Lọc Môn Đỉnh Cao (Tìm kiếm môn học) | STUDENT | **🟠 P1-High** | ✅ **Done** | JPA Specification (Builder Pattern) dynamic query: keyword + idHocKy + soTinChi + loaiMon + chiConCho. Page + Sort. API: GET /api/v1/courses. |
 | 7 | Thuật Toán Logic Đóng Chốt (Validation Rules) | STUDENT | **🟠 P1-High** | ✅ **Done** | Chain of Responsibility: DuplicateRegistration → ScheduleConflict → PrerequisiteCourse + Kafka Consumer cầu nối Go→Java. |
@@ -54,3 +54,4 @@
 - [x] Task 7 - Kafka Consumer + Chain of Responsibility Validation (DuplicateRegistration → ScheduleConflict → PrerequisiteCourse) + DangKyHocPhanServiceImpl + SinhVienRepository
 - [x] Task 6 - Tìm kiếm môn học: CourseSearchRequest + CourseSearchSpecification (JPA Specification Builder Pattern) + ICourseSearchService + CourseSearchServiceImpl + CourseSearchController (GET /api/v1/courses)
 - [x] Task 10 - Dịch vụ Thời khóa biểu: `TimetableController` + `ITimetableService/TimetableServiceImpl` + DTO `TimetableResponse` + frontend `DchVThiKhaBiuThngMinh.jsx` gọi API `GET /api/v1/timetable/me`
+- [x] Task 4 - Bảng điểm / Transcript: `BangDiemMon` + `TranscriptController` + `ITranscriptService/TranscriptServiceImpl` + `findTranscriptRows` + frontend `KimTraTinHcTpTranscriptDashboard.jsx` gọi `GET /api/v1/transcript/me`
