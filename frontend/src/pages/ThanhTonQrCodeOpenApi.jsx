@@ -7,6 +7,7 @@ const ThanhTonQrCodeOpenApi = () => {
   const [provider, setProvider] = useState('MOCK');
   const [noiDung, setNoiDung] = useState('Thanh toan hoc phi hoc ky');
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
 
@@ -51,6 +52,35 @@ const ThanhTonQrCodeOpenApi = () => {
       setError(err.message || 'Lỗi kết nối.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmMock = async () => {
+    if (!result?.idGiaoDich) return;
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      setError('Vui lòng đăng nhập tài khoản sinh viên.');
+      return;
+    }
+    setError('');
+    setConfirming(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/payments/${result.idGiaoDich}/confirm-mock`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.message || 'Không xác nhận được thanh toán.');
+      }
+      setResult(body);
+    } catch (err) {
+      setError(err.message || 'Lỗi xác nhận.');
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -144,6 +174,21 @@ const ThanhTonQrCodeOpenApi = () => {
               >
                 Mở liên kết thanh toán
               </a>
+            )}
+            {String(result.provider || '').toUpperCase() === 'MOCK' && result.trangThai === 'CHO_THANH_TOAN' && (
+              <button
+                type="button"
+                onClick={handleConfirmMock}
+                disabled={confirming}
+                className="w-full py-3 rounded-full bg-emerald-700 text-white font-bold text-sm hover:opacity-90 disabled:opacity-60"
+              >
+                {confirming ? 'Đang xác nhận…' : 'Xác nhận thanh toán MOCK (ghi có ví)'}
+              </button>
+            )}
+            {String(result.provider || '').toUpperCase() === 'MOCK' && result.trangThai === 'THANH_CONG' && (
+              <p className="text-xs text-emerald-800 font-medium text-center">
+                Đã hoàn tất — số tiền đã được ghi vào ví (Task 8). Xem mục &quot;Ví sinh viên&quot;.
+              </p>
             )}
           </section>
         )}

@@ -1,223 +1,148 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const formatVnd = (n) => {
+  if (n == null || n === '') return '—';
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '—';
+  return new Intl.NumberFormat('vi-VN').format(x) + ' ₫';
+};
 
 const VSinhVinStudentWallet = () => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      setError('Vui lòng đăng nhập tài khoản sinh viên.');
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/wallet/me`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.message || 'Không tải được ví.');
+      }
+      setData(body);
+    } catch (e) {
+      setError(e.message || 'Lỗi tải dữ liệu.');
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const username = typeof localStorage !== 'undefined' ? localStorage.getItem('username') : '';
+
   return (
-    <>
-      
-{/*  TopNavBar  */}
+    <main className="px-6 pb-12 min-h-screen bg-surface">
+      <div className="max-w-5xl mx-auto space-y-8 pt-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-on-surface tracking-tight mb-2">Ví sinh viên</h1>
+            <p className="text-on-surface-variant text-sm">
+              Task 8 — <code className="text-xs bg-surface-container-high px-1 rounded">GET /api/v1/wallet/me</code>
+              . Nạp tiền qua thanh toán MOCK: trang Thanh toán QR → &quot;Xác nhận thanh toán MOCK&quot;.
+            </p>
+            {username && (
+              <p className="text-sm text-on-surface mt-2">
+                Xin chào, <span className="text-primary font-bold">{username}</span>
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            className="px-5 py-2.5 rounded-full border border-primary text-primary font-bold text-sm hover:bg-primary/10 disabled:opacity-50"
+          >
+            {loading ? 'Đang tải…' : 'Làm mới'}
+          </button>
+        </div>
 
-{/*  SideNavBar  */}
+        {error && (
+          <div className="rounded-xl border border-error/30 bg-error-container/30 p-4 text-sm text-error">
+            {error}
+          </div>
+        )}
 
-{/*  Main Content Canvas  */}
-<main className="  px-6 pb-12 min-h-screen">
-<div className="max-w-7xl mx-auto space-y-8">
-{/*  Welcome Header Section  */}
-<div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-<div>
-<h1 className="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Ví Sinh Viên</h1>
-<p className="text-on-surface-variant font-medium">Chào mừng trở lại, <span className="text-primary font-bold">Nguyễn Văn A</span>. Quản lý tài chính cá nhân và học phí của bạn.</p>
-</div>
-<div className="flex gap-3">
-<button className="flex items-center gap-2 bg-surface-container-highest px-6 py-3 rounded-full font-bold text-primary hover:bg-primary-container hover:text-white transition-all">
-<span className="material-symbols-outlined">receipt_long</span> Xuất báo cáo
-                    </button>
-<button className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-bold shadow-lg shadow-primary/30 hover:scale-105 transition-transform">
-<span className="material-symbols-outlined">add</span> Nạp tiền ngay
-                    </button>
-</div>
-</div>
-{/*  Dashboard Bento Grid  */}
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-{/*  Balance & Debt Card  */}
-<div className="lg:col-span-2 space-y-6">
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-{/*  Wallet Balance  */}
-<div className="bg-surface-container-lowest p-8 rounded-full shadow-sm relative overflow-hidden group">
-<div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
-<div className="flex flex-col h-full justify-between relative z-10">
-<div>
-<div className="flex items-center gap-2 text-primary mb-4">
-<span className="material-symbols-outlined">account_balance_wallet</span>
-<span className="font-bold text-sm tracking-widest uppercase">Số dư ví hiện tại</span>
-</div>
-<div className="text-5xl font-extrabold text-on-surface flex items-baseline gap-1">
-                                        5,000,000 <span className="text-lg font-bold text-on-surface-variant">₫</span>
-</div>
-</div>
-<div className="mt-8 flex items-center gap-2 text-primary font-semibold text-sm">
-<span className="material-symbols-outlined text-sm">trending_up</span>
-<span>+1,200,000đ từ tháng trước</span>
-</div>
-</div>
-</div>
-{/*  Tuition Debt  */}
-<div className="bg-surface-container-lowest p-8 rounded-full shadow-sm relative overflow-hidden group">
-<div className="absolute -right-10 -top-10 w-40 h-40 bg-error/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
-<div className="flex flex-col h-full justify-between relative z-10">
-<div>
-<div className="flex items-center gap-2 text-error mb-4">
-<span className="material-symbols-outlined">assignment_late</span>
-<span className="font-bold text-sm tracking-widest uppercase">Tổng nợ học phí</span>
-</div>
-<div className="flex items-center gap-3">
-<div className="text-4xl font-extrabold text-error">1,200,000 <span className="text-sm">₫</span></div>
-<span className="bg-error-container text-on-error-container text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Cần thanh toán</span>
-</div>
-</div>
-<div className="mt-8">
-<button className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
-                                        Chi tiết công nợ <span className="material-symbols-outlined text-sm">arrow_forward</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-{/*  History Table Card  */}
-<div className="bg-surface-container-lowest p-8 rounded-xl shadow-sm">
-<div className="flex justify-between items-center mb-8">
-<h3 className="text-xl font-extrabold text-blue-900 tracking-tight">Lịch sử giao dịch gần đây</h3>
-<button className="text-primary font-bold text-sm hover:bg-primary-fixed-dim/20 px-4 py-2 rounded-full transition-colors">Xem tất cả</button>
-</div>
-<div className="overflow-x-auto">
-<table className="w-full text-left border-collapse">
-<thead>
-<tr className="text-on-surface-variant">
-<th className="py-4 px-2 font-bold text-[10px] tracking-[0.1em] uppercase border-b border-outline-variant/10">Mã giao dịch</th>
-<th className="py-4 px-2 font-bold text-[10px] tracking-[0.1em] uppercase border-b border-outline-variant/10">Loại giao dịch</th>
-<th className="py-4 px-2 font-bold text-[10px] tracking-[0.1em] uppercase border-b border-outline-variant/10">Số tiền</th>
-<th className="py-4 px-2 font-bold text-[10px] tracking-[0.1em] uppercase border-b border-outline-variant/10">Ngày giờ</th>
-<th className="py-4 px-2 font-bold text-[10px] tracking-[0.1em] uppercase border-b border-outline-variant/10 text-right">Trạng thái</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-outline-variant/10">
-<tr className="hover:bg-surface-container-low/50 transition-colors group">
-<td className="py-5 px-2 font-mono text-xs font-bold text-blue-800">#EP-TX98231</td>
-<td className="py-5 px-2">
-<div className="flex items-center gap-2">
-<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-<span className="material-symbols-outlined text-sm">add_card</span>
-</div>
-<span className="font-semibold text-sm">Nạp tiền vào ví</span>
-</div>
-</td>
-<td className="py-5 px-2 font-bold text-sm text-primary">+2,000,000đ</td>
-<td className="py-5 px-2 text-xs font-medium text-on-surface-variant italic">14:30 - 20/05/2024</td>
-<td className="py-5 px-2 text-right">
-<span className="inline-flex items-center gap-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-<span className="w-1 h-1 rounded-full bg-primary"></span> Thành công
-                                            </span>
-</td>
-</tr>
-<tr className="hover:bg-surface-container-low/50 transition-colors group">
-<td className="py-5 px-2 font-mono text-xs font-bold text-blue-800">#EP-TX98210</td>
-<td className="py-5 px-2">
-<div className="flex items-center gap-2">
-<div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-<span className="material-symbols-outlined text-sm">school</span>
-</div>
-<span className="font-semibold text-sm">Thanh toán HP</span>
-</div>
-</td>
-<td className="py-5 px-2 font-bold text-sm text-error">-1,500,000đ</td>
-<td className="py-5 px-2 text-xs font-medium text-on-surface-variant italic">09:15 - 18/05/2024</td>
-<td className="py-5 px-2 text-right">
-<span className="inline-flex items-center gap-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-<span className="w-1 h-1 rounded-full bg-primary"></span> Thành công
-                                            </span>
-</td>
-</tr>
-<tr className="hover:bg-surface-container-low/50 transition-colors group">
-<td className="py-5 px-2 font-mono text-xs font-bold text-blue-800">#EP-TX98199</td>
-<td className="py-5 px-2">
-<div className="flex items-center gap-2">
-<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-<span className="material-symbols-outlined text-sm">add_card</span>
-</div>
-<span className="font-semibold text-sm">Nạp tiền vào ví</span>
-</div>
-</td>
-<td className="py-5 px-2 font-bold text-sm text-primary">+1,000,000đ</td>
-<td className="py-5 px-2 text-xs font-medium text-on-surface-variant italic">16:45 - 15/05/2024</td>
-<td className="py-5 px-2 text-right">
-<span className="inline-flex items-center gap-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-<span className="w-1 h-1 rounded-full bg-primary"></span> Thành công
-                                            </span>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-{/*  Right Sidebar: QR & Payment Info  */}
-<div className="space-y-6">
-{/*  VietQR Section  */}
-<div className="bg-surface-container p-1 rounded-xl shadow-inner">
-<div className="bg-surface-container-lowest p-6 rounded-full flex flex-col items-center text-center">
-<div className="mb-6">
-<img alt="Mã QR VietQR" className="w-48 h-48 p-2 border-2 border-primary-fixed rounded-xl" data-alt="clean digital QR code with a university logo in the center and blue stylistic framing for bank payment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADH5e4Hootgd7IucjjuLiWWynkxxPbNWWZou-G0rrmVELzl50Fvl4iJH_CKUl6MO5FDApJ5KbxInQH8foV15Uqk-oy15AzBj8vN_QT3OLadkwxbO1C_1LqhOmK_Uibf_8CRl2HTHQ5DFtoSBrD8BfT9UG6biPw8HgJm93hs4lbJ33zyxmLl0wpEh7YlM0BExkykro52jGRIQcOuyoOBok852s3Ek-SBWtzdzDvilrOyMevPmCSXrXkAwQkOxQM7gGY-5EhGrWiTRb7"/>
-</div>
-<h4 className="text-lg font-extrabold text-primary mb-2">Quét mã nạp tiền</h4>
-<p className="text-xs text-on-surface-variant font-medium px-4 mb-6 leading-relaxed">Sử dụng ứng dụng Ngân hàng (VietQR) hoặc ví điện tử để nạp tiền nhanh chóng vào tài khoản.</p>
-<div className="w-full space-y-3 mb-4">
-<div className="bg-surface-container-low rounded-xl p-3 flex justify-between items-center text-xs font-bold">
-<span className="text-on-surface-variant">Ngân hàng:</span>
-<span className="text-primary uppercase tracking-tight">BIDV - CN TP.HCM</span>
-</div>
-<div className="bg-surface-container-low rounded-xl p-3 flex justify-between items-center text-xs font-bold">
-<span className="text-on-surface-variant">Số tài khoản:</span>
-<span className="text-primary">1234 5678 9999</span>
-</div>
-<div className="bg-surface-container-low rounded-xl p-3 flex justify-between items-center text-xs font-bold">
-<span className="text-on-surface-variant">Chủ TK:</span>
-<span className="text-primary uppercase">EDUPORT - UNIVERSITY</span>
-</div>
-</div>
-<button className="w-full bg-primary-container text-white py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity">
-                                Tải mã QR về máy
-                            </button>
-</div>
-</div>
-{/*  Payment Support Widget  */}
-<div className="bg-secondary-container/10 p-6 rounded-xl relative overflow-hidden">
-<div className="absolute -bottom-4 -right-4 opacity-10">
-<span className="material-symbols-outlined text-[100px]" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>help_center</span>
-</div>
-<h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-3">Hỗ trợ thanh toán</h4>
-<p className="text-xs text-on-surface font-medium leading-relaxed mb-4">Mọi thắc mắc về giao dịch hoặc công nợ học phí, vui lòng liên hệ Phòng Tài vụ tại Tòa nhà A1.</p>
-<div className="flex items-center gap-2 text-xs font-bold text-primary">
-<span className="material-symbols-outlined text-sm">call</span> 028.1234.5678
-                        </div>
-</div>
-</div>
-</div>
-</div>
-</main>
-{/*  BottomNavBar (Mobile Only)  */}
-<nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-50/95 backdrop-blur-lg flex justify-around items-center py-4 px-2 shadow-2xl z-50">
-<a className="flex flex-col items-center gap-1 text-slate-500" href="#">
-<span className="material-symbols-outlined">dashboard</span>
-<span className="text-[10px] font-bold">Home</span>
-</a>
-<a className="flex flex-col items-center gap-1 text-slate-500" href="#">
-<span className="material-symbols-outlined">edit_calendar</span>
-<span className="text-[10px] font-bold">Học phần</span>
-</a>
-<a className="flex flex-col items-center gap-1 text-blue-700" href="#">
-<span className="material-symbols-outlined" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>payments</span>
-<span className="text-[10px] font-bold">Ví SV</span>
-</a>
-<a className="flex flex-col items-center gap-1 text-slate-500" href="#">
-<span className="material-symbols-outlined">grade</span>
-<span className="text-[10px] font-bold">Điểm</span>
-</a>
-<a className="flex flex-col items-center gap-1 text-slate-500" href="#">
-<span className="material-symbols-outlined">person</span>
-<span className="text-[10px] font-bold">Tôi</span>
-</a>
-</nav>
+        {!loading && !error && data && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm border border-outline-variant/20">
+              <p className="text-xs font-bold text-primary uppercase tracking-widest mb-2">Số dư ví</p>
+              <p className="text-4xl font-black text-on-surface">{formatVnd(data.soDu)}</p>
+              <p className="text-xs text-on-surface-variant mt-4">
+                Mã ví: <span className="font-mono">{data.idVi}</span>
+              </p>
+            </section>
+            <section className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm border border-outline-variant/20">
+              <p className="text-xs font-bold text-error uppercase tracking-widest mb-2">Ước tính học phí & công nợ</p>
+              <p className="text-sm text-on-surface-variant">
+                Tổng học phí lớp đã đăng ký (theo dữ liệu lớp):{' '}
+                <span className="font-bold text-on-surface">{formatVnd(data.tongHocPhiDangKyUocTinh)}</span>
+              </p>
+              <p className="text-lg font-bold text-error mt-3">
+                Nợ ước tính (max(0, học phí − số dư ví)): {formatVnd(data.noHocPhiUocTinh)}
+              </p>
+              <p className="text-[11px] text-on-surface-variant mt-3">
+                * Chỉ minh họa đồ án; không thay thế kế toán thực tế.
+              </p>
+            </section>
+          </div>
+        )}
 
-    </>
+        {!loading && !error && data && (
+          <section className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/20">
+            <h2 className="text-lg font-bold text-on-surface mb-4">Lịch sử giao dịch ví</h2>
+            {(data.giaoDichGanDay || []).length === 0 ? (
+              <p className="text-sm text-on-surface-variant">Chưa có giao dịch. Xác nhận một giao dịch MOCK để thấy dòng nạp tiền.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[560px]">
+                  <thead className="text-[11px] uppercase text-on-surface-variant border-b border-outline-variant/20">
+                    <tr>
+                      <th className="py-2 pr-4">Thời gian</th>
+                      <th className="py-2 pr-4">Loại</th>
+                      <th className="py-2 pr-4 text-right">Số tiền</th>
+                      <th className="py-2 pr-4 text-right">Số dư sau</th>
+                      <th className="py-2">Mã đơn TT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10">
+                    {data.giaoDichGanDay.map((g) => (
+                      <tr key={g.idGiaoDichVi} className="hover:bg-surface-container-low/40">
+                        <td className="py-3 pr-4 whitespace-nowrap text-on-surface-variant">
+                          {g.thoiGian ? String(g.thoiGian).replace('T', ' ').slice(0, 19) : '—'}
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs">{g.loai}</td>
+                        <td className="py-3 pr-4 text-right font-semibold text-emerald-800">
+                          +{formatVnd(g.soTien)}
+                        </td>
+                        <td className="py-3 pr-4 text-right">{formatVnd(g.soDuSau)}</td>
+                        <td className="py-3 font-mono text-xs">{g.maDonHangThanhToan || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </main>
   );
 };
 

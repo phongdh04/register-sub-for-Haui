@@ -20,7 +20,7 @@
 | 5 | Tính năng Trước Giờ G (Giỏ hàng Pre-Registration)| STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng tiện ích, bản nháp, có thể bỏ qua để test lõi thực tế (Đăng ký thẳng) trước. |
 | 6 | Lọc Môn Đỉnh Cao (Tìm kiếm môn học) | STUDENT | **🟠 P1-High** | ✅ **Done** | JPA Specification (Builder Pattern) dynamic query: keyword + idHocKy + soTinChi + loaiMon + chiConCho. Page + Sort. API: GET /api/v1/courses. |
 | 7 | Thuật Toán Logic Đóng Chốt (Validation Rules) | STUDENT | **🟠 P1-High** | ✅ **Done** | Chain of Responsibility: DuplicateRegistration → ScheduleConflict → PrerequisiteCourse + Kafka Consumer cầu nối Go→Java. |
-| 8 | Ví Sinh Viên (Student Wallet) | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng ví nội bộ làm sau khi xong cổng thanh toán chính thức API. |
+| 8 | Ví Sinh Viên (Student Wallet) | STUDENT | **🟡 P2-Medium** | ✅ **Done** | Bảng `Vi_Sinh_Vien`, `Giao_Dich_Vi`; API `GET /api/v1/wallet/me`; nạp qua `POST /api/v1/payments/{id}/confirm-mock` (ghi có idempotent); ước tính nợ học phí từ đăng ký; UI `VSinhVinStudentWallet.jsx` + nút xác nhận MOCK trên `ThanhTonQrCodeOpenApi.jsx`. |
 | 9 | Thanh Toán QR Code (Open API VNPay/MoMo) | STUDENT | **🟠 P1-High** | ✅ **Done** | API `POST /api/v1/payments/tuition-qr` + Adapter MOCK/VNPay/MoMo stub + bảng `Giao_Dich_Thanh_Toan`; UI `ThanhTonQrCodeOpenApi.jsx` tạo QR/liên kết. |
 | 10 | Dịch vụ Thời Khóa Biểu thông minh | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/timetable/me` lấy dữ liệu thật từ đăng ký học phần + `thoi_khoa_bieu_json`, render UI realtime theo JWT Student. |
 | 11 | Lịch Thi & Đánh Giá Giảng Viên | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Modules Râu ria (Đánh giá chỉ là Form lưu Database). |
@@ -56,5 +56,6 @@
 - [x] Task 10 - Dịch vụ Thời khóa biểu: `TimetableController` + `ITimetableService/TimetableServiceImpl` + DTO `TimetableResponse` + frontend `DchVThiKhaBiuThngMinh.jsx` gọi API `GET /api/v1/timetable/me`
 - [x] Task 4 - Bảng điểm / Transcript: `BangDiemMon` + `TranscriptController` + `ITranscriptService/TranscriptServiceImpl` + `findTranscriptRows` + frontend `KimTraTinHcTpTranscriptDashboard.jsx` gọi `GET /api/v1/transcript/me`
 - [x] Task 9 - Thanh toán QR: `PaymentController` + `IPaymentService/PaymentServiceImpl` + `PaymentGatewayAdapter` (MOCK/VNPay/MoMo) + `GiaoDichThanhToan` + UI `ThanhTonQrCodeOpenApi.jsx`
+- [x] Task 8 - Ví SV: `ViSinhVien` + `GiaoDichVi` + `IWalletService/WalletServiceImpl` + `WalletController` + `confirm-mock` + `sumHocPhiDangKyBySinhVien` + UI `VSinhVinStudentWallet.jsx`
 - [x] Task 16 - Điểm danh GV: `BuoiDiemDanh` + `DiemDanhDangKy` + `IAttendanceService/AttendanceServiceImpl` + `LecturerAttendanceController` + `StudentAttendanceController` + UI `QunLLpGingDyimDanh.jsx` + `DataSeeder` (GV_SEED)
 - [x] Task 17 - Nhập điểm GV: `BangDiemMonRepository` + `IGradingService/GradingServiceImpl` + `LecturerGradingController` + `findGradebookRowsForLop` + transcript filter công bố + UI `MngLiNhpQunLimGradingSystem.jsx`
