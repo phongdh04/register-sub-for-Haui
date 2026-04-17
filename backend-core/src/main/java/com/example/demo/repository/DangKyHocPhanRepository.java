@@ -137,4 +137,23 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
               AND lhp.hocPhi IS NOT NULL
             """)
     BigDecimal sumHocPhiDangKyBySinhVien(@Param("svId") Long svId);
+
+    @Query("""
+            SELECT d.sinhVien.idSinhVien, COALESCE(SUM(lhp.hocPhi), 0)
+            FROM DangKyHocPhan d JOIN d.lopHocPhan lhp
+            WHERE d.sinhVien.idSinhVien IN :ids
+              AND d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')
+              AND lhp.hocPhi IS NOT NULL
+            GROUP BY d.sinhVien.idSinhVien
+            """)
+    List<Object[]> sumHocPhiDangKyBySinhVienIds(@Param("ids") Collection<Long> ids);
+
+    @Query("""
+            SELECT d.sinhVien.idSinhVien, COALESCE(SUM(lhp.hocPhi), 0)
+            FROM DangKyHocPhan d JOIN d.lopHocPhan lhp
+            WHERE d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')
+              AND lhp.hocPhi IS NOT NULL
+            GROUP BY d.sinhVien.idSinhVien
+            """)
+    List<Object[]> sumHocPhiDangKyGroupedBySinhVien();
 }

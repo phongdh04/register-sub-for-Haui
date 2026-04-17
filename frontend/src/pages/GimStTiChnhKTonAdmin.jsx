@@ -1,236 +1,405 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const formatVnd = (n) => {
+  if (n == null || n === '') return '—';
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '—';
+  return new Intl.NumberFormat('vi-VN').format(x) + ' ₫';
+};
+
+const downloadCsv = (rows, filename) => {
+  const header = ['maSinhVien', 'hoTen', 'maLop', 'soDuVi', 'tongHocPhiDangKy', 'conNoUocTinh', 'coNo'];
+  const lines = [header.join(',')];
+  for (const r of rows) {
+    lines.push(
+      [r.maSinhVien, `"${(r.hoTen || '').replace(/"/g, '""')}"`, r.maLop, r.soDuVi, r.tongHocPhiDangKy, r.conNoUocTinh, r.coNo].join(',')
+    );
+  }
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 const GimStTiChnhKTonAdmin = () => {
+  const [summary, setSummary] = useState(null);
+  const [err, setErr] = useState('');
+  const [recPage, setRecPage] = useState(0);
+  const [recData, setRecData] = useState(null);
+  const [payPage, setPayPage] = useState(0);
+  const [payFilter, setPayFilter] = useState('');
+  const [payData, setPayData] = useState(null);
+  const [wxPage, setWxPage] = useState(0);
+  const [wxData, setWxData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const authHeaders = () => {
+    const token = localStorage.getItem('jwt_token');
+    return {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  };
+
+  const loadSummary = useCallback(async () => {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/finance/summary`, { headers: authHeaders() });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Lỗi ${res.status} khi tải tổng quan.`);
+    setSummary(body);
+  }, []);
+
+  const loadReceivables = useCallback(async () => {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/finance/receivables?page=${recPage}&size=15`, { headers: authHeaders() });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Lỗi ${res.status} khi tải công nợ.`);
+    setRecData(body);
+  }, [recPage]);
+
+  const loadPayments = useCallback(async () => {
+    const qs = new URLSearchParams({ page: String(payPage), size: '15' });
+    if (payFilter.trim()) qs.set('trangThai', payFilter.trim());
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/finance/payments?${qs}`, { headers: authHeaders() });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Lỗi ${res.status} khi tải giao dịch thanh toán.`);
+    setPayData(body);
+  }, [payPage, payFilter]);
+
+  const loadWalletTx = useCallback(async () => {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/finance/wallet-transactions?page=${wxPage}&size=10`, {
+      headers: authHeaders()
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Lỗi ${res.status} khi tải sổ ví.`);
+    setWxData(body);
+  }, [wxPage]);
+
+  const refreshAll = useCallback(async () => {
+    setLoading(true);
+    setErr('');
+    try {
+      await Promise.all([loadSummary(), loadReceivables(), loadPayments(), loadWalletTx()]);
+    } catch (e) {
+      setErr(e.message || 'Lỗi tải dữ liệu (cần đăng nhập admin).');
+    } finally {
+      setLoading(false);
+    }
+  }, [loadSummary, loadReceivables, loadPayments, loadWalletTx]);
+
+  useEffect(() => {
+    loadSummary().catch((e) => setErr(e.message));
+  }, [loadSummary]);
+
+  useEffect(() => {
+    loadReceivables().catch((e) => setErr(e.message));
+  }, [loadReceivables]);
+
+  useEffect(() => {
+    loadPayments().catch((e) => setErr(e.message));
+  }, [loadPayments]);
+
+  useEffect(() => {
+    loadWalletTx().catch((e) => setErr(e.message));
+  }, [loadWalletTx]);
+
+  const recRows = recData?.content || [];
+  const payRows = payData?.content || [];
+  const wxRows = wxData?.content || [];
+
   return (
-    <>
-      
-{/*  TopNavBar (Shared Component)  */}
+    <main className="px-8 pb-12">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
+        <div>
+          <nav className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-on-surface-variant mb-4">
+            <span>Tài chính</span>
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span className="text-primary">Giám sát (Task 14)</span>
+          </nav>
+          <h1 className="text-5xl font-extrabold font-headline tracking-tight text-on-surface">Quản lý Công nợ &amp; Tài chính</h1>
+          <p className="mt-2 text-on-surface-variant max-w-2xl font-body">
+            Dữ liệu thật từ <code className="text-xs bg-surface-container-high px-1 rounded">GET /api/v1/admin/finance/*</code> (đăng ký học phí, ví, giao dịch thanh toán, ghi có ví).
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => downloadCsv(recRows, `cong-no-trang-${recPage + 1}.csv`)}
+            className="flex items-center gap-2 px-6 py-3 border border-outline-variant hover:bg-surface-container-high transition-colors rounded-full font-semibold text-sm"
+          >
+            <span className="material-symbols-outlined text-xl">upload_file</span> Xuất CSV (trang hiện tại)
+          </button>
+          <button
+            type="button"
+            onClick={refreshAll}
+            className="jewel-gradient flex items-center gap-2 px-8 py-3 text-white rounded-full font-bold text-sm shadow-lg hover:opacity-90 transition-all"
+          >
+            <span className="material-symbols-outlined text-xl">refresh</span>
+            Làm mới
+          </button>
+        </div>
+      </div>
 
-{/*  SideNavBar (Shared Component)  */}
+      {err && <div className="mb-6 rounded-xl border border-error/30 bg-error-container/20 px-4 py-3 text-sm text-error">{err}</div>}
+      {loading && <p className="text-sm text-on-surface-variant mb-6">Đang tải…</p>}
 
-{/*  Main Content Canvas  */}
-<main className="  px-8 pb-12">
-{/*  Header Section  */}
-<div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
-<div>
-<nav className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-on-surface-variant mb-4">
-<span>Tài chính</span>
-<span className="material-symbols-outlined text-[14px]">chevron_right</span>
-<span className="text-primary">Quản lý Học phí</span>
-</nav>
-<h1 className="text-5xl font-extrabold font-headline tracking-tight text-on-surface">Quản lý Công nợ &amp; Tài chính</h1>
-<p className="mt-2 text-on-surface-variant max-w-2xl font-body">Giám sát doanh thu tổ chức, quản lý nghĩa vụ tài chính cá nhân của sinh viên và thực hiện khóa hệ thống đối với các tài khoản nợ quá hạn.</p>
-</div>
-<div className="flex flex-wrap gap-3">
-<button className="flex items-center gap-2 px-6 py-3 border border-outline-variant hover:bg-surface-container-high transition-colors rounded-full font-semibold text-sm">
-<span className="material-symbols-outlined text-xl">upload_file</span> Xuất Excel
-                </button>
-<button className="jewel-gradient flex items-center gap-2 px-8 py-3 text-white rounded-full font-bold text-sm shadow-lg hover:opacity-90 transition-all">
-<span className="material-symbols-outlined text-xl">account_balance_wallet</span> Bù trừ thủ công
-                </button>
-</div>
-</div>
-{/*  High-Level KPI Grid  */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-<div className="bg-surface-container-lowest p-8 rounded-xl editorial-shadow border-l-4 border-primary">
-<p className="label-sm font-bold uppercase tracking-widest text-on-surface-variant mb-2">Tổng nợ sinh viên</p>
-<div className="flex items-end gap-2">
-<span className="text-3xl font-black text-on-surface">1.420.500.000₫</span>
-<span className="text-error font-bold text-sm mb-1 flex items-center"><span className="material-symbols-outlined text-sm">trending_up</span> +4.2%</span>
-</div>
-</div>
-<div className="bg-surface-container-lowest p-8 rounded-xl editorial-shadow border-l-4 border-secondary">
-<p className="label-sm font-bold uppercase tracking-widest text-on-surface-variant mb-2">Số dư ví sinh viên</p>
-<div className="flex items-end gap-2">
-<span className="text-3xl font-black text-on-surface">842.120.000₫</span>
-<span className="text-primary font-bold text-sm mb-1 flex items-center"><span className="material-symbols-outlined text-sm">trending_down</span> -1.5%</span>
-</div>
-</div>
-<div className="bg-surface-container-lowest p-8 rounded-xl editorial-shadow border-l-4 border-tertiary">
-<p className="label-sm font-bold uppercase tracking-widest text-on-surface-variant mb-2">Sinh viên bị khóa thi</p>
-<div className="flex items-end gap-2">
-<span className="text-3xl font-black text-on-surface">142</span>
-<span className="text-on-surface-variant font-medium text-sm mb-1">Sinh viên bị hạn chế</span>
-</div>
-</div>
-</div>
-{/*  Main Content Area  */}
-<div className="bg-surface-container-lowest rounded-xl editorial-shadow overflow-hidden">
-{/*  Table Controls  */}
-<div className="p-6 bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-4">
-<div className="flex items-center gap-4">
-<h3 className="font-headline font-bold text-lg text-on-surface">Sổ cái Phải thu</h3>
-<div className="h-4 w-px bg-outline-variant"></div>
-<span className="text-sm font-medium text-on-surface-variant">Đang hiển thị 1.240 bản ghi</span>
-</div>
-<div className="flex items-center gap-3">
-<div className="relative">
-<select className="appearance-none pl-4 pr-10 py-2 bg-white rounded-full border border-outline-variant text-sm font-medium focus:ring-primary focus:border-primary">
-<option>Lọc theo lớp</option>
-<option>CS-2024</option>
-<option>ECON-2023</option>
-</select>
-<span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
-</div>
-<button className="bg-error text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-error/90 transition-colors">
-<span className="material-symbols-outlined text-lg">lock</span> Khóa thi hàng loạt
-                    </button>
-</div>
-</div>
-{/*  Data Table  */}
-<div className="overflow-x-auto">
-<table className="w-full text-left border-collapse">
-<thead>
-<tr className="bg-surface-container-low/50">
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Mã SV</th>
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Họ tên</th>
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Lớp</th>
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Số dư ví</th>
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng nợ</th>
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Trạng thái khóa</th>
-<th className="px-6 py-4 label-md text-[11px] font-bold uppercase tracking-widest text-on-surface-variant text-right">Thao tác</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-surface-container">
-{/*  Row 1  */}
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="px-6 py-4 font-mono text-sm font-semibold text-primary">202400125</td>
-<td className="px-6 py-4 font-semibold text-on-surface">Nguyễn Văn Anh</td>
-<td className="px-6 py-4 text-sm text-on-surface-variant">CS-K47-A</td>
-<td className="px-6 py-4 text-sm font-medium text-on-surface">1.250.000₫</td>
-<td className="px-6 py-4 text-sm font-bold text-on-surface">0₫</td>
-<td className="px-6 py-4">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase tracking-wider">Mở khóa</span>
-</td>
-<td className="px-6 py-4 text-right">
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-{/*  Row 2  */}
-<tr className="bg-surface-container-low/30 hover:bg-surface-container-low transition-colors group">
-<td className="px-6 py-4 font-mono text-sm font-semibold text-primary">202400129</td>
-<td className="px-6 py-4 font-semibold text-on-surface">Lê Thị Bích</td>
-<td className="px-6 py-4 text-sm text-on-surface-variant">ECON-K48-B</td>
-<td className="px-6 py-4 text-sm font-medium text-on-surface">50.000₫</td>
-<td className="px-6 py-4 text-sm font-bold text-error">4.200.000₫</td>
-<td className="px-6 py-4">
-<span className="px-3 py-1 bg-error-container text-on-error-container rounded-full text-[10px] font-bold uppercase tracking-wider">Đã khóa</span>
-</td>
-<td className="px-6 py-4 text-right">
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-{/*  Row 3  */}
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="px-6 py-4 font-mono text-sm font-semibold text-primary">202400142</td>
-<td className="px-6 py-4 font-semibold text-on-surface">Trần Minh Quân</td>
-<td className="px-6 py-4 text-sm text-on-surface-variant">CS-K47-A</td>
-<td className="px-6 py-4 text-sm font-medium text-on-surface">300.000₫</td>
-<td className="px-6 py-4 text-sm font-bold text-secondary">850.000₫</td>
-<td className="px-6 py-4">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase tracking-wider">Mở khóa</span>
-</td>
-<td className="px-6 py-4 text-right">
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-{/*  Row 4  */}
-<tr className="bg-surface-container-low/30 hover:bg-surface-container-low transition-colors group">
-<td className="px-6 py-4 font-mono text-sm font-semibold text-primary">202400155</td>
-<td className="px-6 py-4 font-semibold text-on-surface">Phạm Hoàng Nam</td>
-<td className="px-6 py-4 text-sm text-on-surface-variant">LAW-K46-C</td>
-<td className="px-6 py-4 text-sm font-medium text-on-surface">0₫</td>
-<td className="px-6 py-4 text-sm font-bold text-error">12.450.000₫</td>
-<td className="px-6 py-4">
-<span className="px-3 py-1 bg-error-container text-on-error-container rounded-full text-[10px] font-bold uppercase tracking-wider">Đã khóa</span>
-</td>
-<td className="px-6 py-4 text-right">
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-{/*  Row 5  */}
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="px-6 py-4 font-mono text-sm font-semibold text-primary">202400168</td>
-<td className="px-6 py-4 font-semibold text-on-surface">Vương Thu Thủy</td>
-<td className="px-6 py-4 text-sm text-on-surface-variant">MED-K45-D</td>
-<td className="px-6 py-4 text-sm font-medium text-on-surface">2.100.000₫</td>
-<td className="px-6 py-4 text-sm font-bold text-on-surface">0₫</td>
-<td className="px-6 py-4">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase tracking-wider">Mở khóa</span>
-</td>
-<td className="px-6 py-4 text-right">
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-{/*  Pagination  */}
-<div className="p-6 border-t border-surface-container flex items-center justify-between">
-<span className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Trang 1 của 62</span>
-<div className="flex gap-2">
-<button className="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50" disabled="">
-<span className="material-symbols-outlined">chevron_left</span>
-</button>
-<button className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-sm">1</button>
-<button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-on-surface font-semibold">2</button>
-<button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-on-surface font-semibold">3</button>
-<button className="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors">
-<span className="material-symbols-outlined">chevron_right</span>
-</button>
-</div>
-</div>
-</div>
-{/*  Asymmetric Footer Insight Card  */}
-<div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
-<div className="lg:col-span-4 bg-primary text-white p-10 rounded-xl relative overflow-hidden flex flex-col justify-between">
-<div className="relative z-10">
-<h4 className="text-2xl font-bold font-headline mb-4">Chỉ số Sức khỏe Tài chính</h4>
-<p className="text-primary-fixed-dim text-sm leading-relaxed mb-8">Tỷ lệ thu hồi học phí hiện tại là 88,4%. Chúng tôi khuyên bạn nên kích hoạt lời nhắc hàng loạt cho tất cả các tài khoản có nợ trên 500.000₫ trước giai đoạn thi giữa kỳ.</p>
-</div>
-<div className="relative z-10">
-<button className="bg-white text-primary px-6 py-3 rounded-full font-bold text-sm hover:bg-primary-fixed transition-colors">Phân tích Mô hình Rủi ro</button>
-</div>
-{/*  Decorative background elements  */}
-<div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-container rounded-full opacity-50 blur-3xl"></div>
-<div className="absolute top-0 right-0 p-8 opacity-20">
-<span className="material-symbols-outlined text-[120px]" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>analytics</span>
-</div>
-</div>
-<div className="lg:col-span-8 bg-surface-container-highest p-8 rounded-xl flex flex-col md:flex-row gap-8 items-center">
-<div className="flex-1">
-<h4 className="text-xl font-bold font-headline text-on-surface mb-2">Kiểm toán Giải ngân Thủ công</h4>
-<p className="text-on-surface-variant text-sm mb-6">Lần bù trừ thủ công cuối cùng được thực hiện vào ngày 24 tháng 10 năm 2023 bởi Admin-ID: 4421. Đảm bảo tất cả các biên lai vật lý được quét và đính kèm vào hồ sơ sinh viên trong vòng 24 giờ.</p>
-<div className="flex gap-4">
-<div className="flex flex-col">
-<span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Đang chờ kiểm toán</span>
-<span className="text-2xl font-black text-secondary">24 Trường hợp</span>
-</div>
-<div className="w-px h-10 bg-outline-variant mx-4 self-center"></div>
-<div className="flex flex-col">
-<span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Đã xác minh hôm nay</span>
-<span className="text-2xl font-black text-primary">112 Trường hợp</span>
-</div>
-</div>
-</div>
-<div className="w-full md:w-48 h-48 rounded-xl overflow-hidden shadow-lg">
-<img alt="Tài liệu kinh doanh và biểu đồ tài chính" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXUQO6AuoGo5zvOHFyUO39jWKpYTYfxGsjInlihNF_keM3Rr76Usd_RAJP3t5_BMET5JHR4vaJ35VxOFGLV6Pd3JWG2PlLNHr-dijXIAwWBli6DtuFs79SdG3XTrr8m6ybg_VnZ3DcoS2s1i9_xmWnj0VbMlTN8obqM08ksqNLIn5wX5cdgHnUVF1k5yghv97s3tlgsPB1kKKYup7bPWCOQAOyEyfG3qEhnHQCR7nPviW37Mh_cHtG6fONDnf35ZzghUMg-44tjae7"/>
-</div>
-</div>
-</div>
-</main>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="bg-surface-container-lowest p-8 rounded-xl editorial-shadow border-l-4 border-primary">
+          <p className="label-sm font-bold uppercase tracking-widest text-on-surface-variant mb-2">Tổng nợ ước tính (HP − ví)</p>
+          <div className="flex items-end gap-2">
+            <span className="text-3xl font-black text-on-surface">{formatVnd(summary?.tongNoHocPhiUocTinh)}</span>
+          </div>
+          <p className="text-xs text-on-surface-variant mt-2">{summary?.soSinhVienConNo ?? '—'} SV còn dư nợ</p>
+        </div>
+        <div className="bg-surface-container-lowest p-8 rounded-xl editorial-shadow border-l-4 border-secondary">
+          <p className="label-sm font-bold uppercase tracking-widest text-on-surface-variant mb-2">Tổng số dư ví</p>
+          <div className="flex items-end gap-2">
+            <span className="text-3xl font-black text-on-surface">{formatVnd(summary?.tongSoDuViTatCa)}</span>
+          </div>
+          <p className="text-xs text-on-surface-variant mt-2">{summary?.tongSoSinhVien ?? '—'} hồ sơ sinh viên</p>
+        </div>
+        <div className="bg-surface-container-lowest p-8 rounded-xl editorial-shadow border-l-4 border-tertiary">
+          <p className="label-sm font-bold uppercase tracking-widest text-on-surface-variant mb-2">GD thanh toán</p>
+          <div className="text-sm text-on-surface-variant space-y-1">
+            <p>
+              Thành công: <strong className="text-on-surface">{summary?.soGiaoDichThanhCong ?? 0}</strong> —{' '}
+              {formatVnd(summary?.tongSoTienGiaoDichThanhCong)}
+            </p>
+            <p>
+              Chờ: <strong>{summary?.soGiaoDichChoThanhToan ?? 0}</strong> — {formatVnd(summary?.tongSoTienGiaoDichChoThanhToan)}
+            </p>
+            <p>
+              Ghi ví: <strong>{summary?.soGiaoDichViGhiNhan ?? 0}</strong> dòng
+            </p>
+          </div>
+        </div>
+      </div>
 
-    </>
+      <div className="bg-surface-container-lowest rounded-xl editorial-shadow overflow-hidden mb-10">
+        <div className="p-6 bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h3 className="font-headline font-bold text-lg text-on-surface">Sổ cái Phải thu (theo SV)</h3>
+            <div className="h-4 w-px bg-outline-variant" />
+            <span className="text-sm font-medium text-on-surface-variant">
+              Trang {recData != null ? recData.number + 1 : 1} / {recData?.totalPages || 1} — {recData?.totalElements ?? 0} bản ghi
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={!recData || recData.first}
+              onClick={() => setRecPage((p) => Math.max(0, p - 1))}
+              className="px-3 py-2 rounded-full border text-sm disabled:opacity-40"
+            >
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={!recData || recData.last}
+              onClick={() => setRecPage((p) => p + 1)}
+              className="px-3 py-2 rounded-full border text-sm disabled:opacity-40"
+            >
+              Sau
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-surface-container-low/50">
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Mã SV</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Họ tên</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Lớp</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Số dư ví</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">HP đăng ký</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Còn nợ ước tính</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container">
+              {recRows.map((r) => (
+                <tr key={r.idSinhVien} className="hover:bg-surface-container-low transition-colors">
+                  <td className="px-6 py-4 font-mono text-sm font-semibold text-primary">{r.maSinhVien}</td>
+                  <td className="px-6 py-4 font-semibold text-on-surface">{r.hoTen}</td>
+                  <td className="px-6 py-4 text-sm text-on-surface-variant">{r.maLop || '—'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-on-surface">{formatVnd(r.soDuVi)}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-on-surface">{formatVnd(r.tongHocPhiDangKy)}</td>
+                  <td className={`px-6 py-4 text-sm font-bold ${r.coNo ? 'text-error' : 'text-on-surface'}`}>{formatVnd(r.conNoUocTinh)}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={
+                        r.coNo
+                          ? 'px-3 py-1 bg-error-container text-on-error-container rounded-full text-[10px] font-bold uppercase tracking-wider'
+                          : 'px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase tracking-wider'
+                      }
+                    >
+                      {r.coNo ? 'Còn nợ' : 'Đủ / dư'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-surface-container-lowest rounded-xl editorial-shadow overflow-hidden mb-10">
+        <div className="p-6 bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h3 className="font-headline font-bold text-lg text-on-surface">Giao dịch thanh toán (QR / cổng)</h3>
+          <div className="flex items-center gap-2">
+            <select
+              className="pl-4 pr-8 py-2 bg-white rounded-full border border-outline-variant text-sm font-medium"
+              value={payFilter}
+              onChange={(e) => {
+                setPayFilter(e.target.value);
+                setPayPage(0);
+              }}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="CHO_THANH_TOAN">CHO_THANH_TOAN</option>
+              <option value="THANH_CONG">THANH_CONG</option>
+              <option value="THAT_BAI">THAT_BAI</option>
+              <option value="HUY">HUY</option>
+            </select>
+            <button
+              type="button"
+              disabled={!payData || payData.first}
+              onClick={() => setPayPage((p) => Math.max(0, p - 1))}
+              className="px-3 py-2 rounded-full border text-sm disabled:opacity-40"
+            >
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={!payData || payData.last}
+              onClick={() => setPayPage((p) => p + 1)}
+              className="px-3 py-2 rounded-full border text-sm disabled:opacity-40"
+            >
+              Sau
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-surface-container-low/50">
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Thời gian</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">SV</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Số tiền</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Provider</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Trạng thái</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Mã đơn</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container">
+              {payRows.map((r) => (
+                <tr key={r.idGiaoDich}>
+                  <td className="px-4 py-3 whitespace-nowrap">{r.taoLuc ? new Date(r.taoLuc).toLocaleString('vi-VN') : '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{r.hoTenSinhVien}</div>
+                    <div className="text-xs text-on-surface-variant font-mono">{r.maSinhVien}</div>
+                  </td>
+                  <td className="px-4 py-3 font-semibold">{formatVnd(r.soTien)}</td>
+                  <td className="px-4 py-3">{r.provider}</td>
+                  <td className="px-4 py-3">{r.trangThai}</td>
+                  <td className="px-4 py-3 font-mono text-xs break-all max-w-[140px]">{r.maDonHang}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-surface-container-lowest rounded-xl editorial-shadow overflow-hidden mb-10">
+        <div className="p-6 bg-surface-container-low flex justify-between items-center gap-4">
+          <h3 className="font-headline font-bold text-lg text-on-surface">Giao dịch ví (ghi có)</h3>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!wxData || wxData.first}
+              onClick={() => setWxPage((p) => Math.max(0, p - 1))}
+              className="px-3 py-2 rounded-full border text-sm disabled:opacity-40"
+            >
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={!wxData || wxData.last}
+              onClick={() => setWxPage((p) => p + 1)}
+              className="px-3 py-2 rounded-full border text-sm disabled:opacity-40"
+            >
+              Sau
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-surface-container-low/50">
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Thời gian</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">SV</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Loại</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Số tiền</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Số dư sau</th>
+                <th className="px-4 py-3 text-[10px] font-bold uppercase text-on-surface-variant">Mã đơn TT</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container">
+              {wxRows.map((r) => (
+                <tr key={r.idGiaoDichVi}>
+                  <td className="px-4 py-3 whitespace-nowrap">{r.thoiGian ? new Date(r.thoiGian).toLocaleString('vi-VN') : '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{r.hoTenSinhVien}</div>
+                    <div className="text-xs font-mono text-on-surface-variant">{r.maSinhVien}</div>
+                  </td>
+                  <td className="px-4 py-3">{r.loai}</td>
+                  <td className="px-4 py-3 font-semibold">{formatVnd(r.soTien)}</td>
+                  <td className="px-4 py-3">{formatVnd(r.soDuSau)}</td>
+                  <td className="px-4 py-3 font-mono text-xs break-all max-w-[120px]">{r.maDonHangThanhToan || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-4 bg-primary text-white p-10 rounded-xl relative overflow-hidden flex flex-col justify-between">
+          <div className="relative z-10">
+            <h4 className="text-2xl font-bold font-headline mb-4">Chỉ số tổng quan</h4>
+            <p className="text-primary-fixed-dim text-sm leading-relaxed mb-8">
+              Công nợ ước tính = tổng học phí các lớp đang đăng ký hiệu lực trừ số dư ví. Thanh toán thành công đồng bộ ghi có ví (idempotent theo mã giao dịch).
+            </p>
+          </div>
+          <div className="relative z-10 flex items-center gap-2 text-sm opacity-90">
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>
+              analytics
+            </span>
+            Task 14 — Admin finance read APIs
+          </div>
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-container rounded-full opacity-50 blur-3xl" />
+        </div>
+        <div className="lg:col-span-8 bg-surface-container-highest p-8 rounded-xl flex flex-col gap-6">
+          <div>
+            <h4 className="text-xl font-bold font-headline text-on-surface mb-2">Thao tác thủ công</h4>
+            <p className="text-on-surface-variant text-sm">
+              Khóa thi hàng loạt và bù trừ thủ công chưa có API — chỉ hiển thị số liệu giám sát. Có thể mở rộng sau với workflow duyệt.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" disabled className="bg-error/40 text-white px-6 py-2 rounded-full font-bold text-sm cursor-not-allowed">
+              Khóa thi hàng loạt (n/a)
+            </button>
+            <button type="button" disabled className="border border-outline-variant px-6 py-2 rounded-full font-bold text-sm cursor-not-allowed">
+              Bù trừ thủ công (n/a)
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 };
 
