@@ -196,9 +196,20 @@ const KimTraTinHcTpTranscriptDashboard = () => {
                           </td>
                           <td className="px-4 py-4 text-center text-sm">{row.soTinChi ?? '—'}</td>
                           <td className="px-4 py-4 text-center text-sm font-semibold">
-                            {row.daCoDiem ? formatGpa(row.diemHe4) : '—'}
+                            {row.diemHe4 != null ? (
+                              <span>
+                                {formatGpa(row.diemHe4)}
+                                {!row.congBoChinhThuc && (
+                                  <span className="block text-[10px] font-medium text-amber-800 mt-0.5">Chờ công bố</span>
+                                )}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
-                          <td className="px-4 py-4 text-center text-sm">{row.diemChu || '—'}</td>
+                          <td className="px-4 py-4 text-center text-sm">
+                            {row.diemHe4 != null ? row.diemChu || '—' : '—'}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -206,7 +217,7 @@ const KimTraTinHcTpTranscriptDashboard = () => {
                 </table>
               </div>
               <div className="p-6 border-t border-outline-variant/10 text-xs text-on-surface-variant">
-                * Chỉ tính GPA cho các học phần đã có điểm hệ 4 trong bảng <code className="font-mono">Bang_Diem_Mon</code>.
+                * GPA chỉ tính điểm đã <strong>công bố chính thức</strong> (trạng thái <code className="font-mono">DA_CONG_BO</code> hoặc bản ghi cũ không trạng thái). Điểm nháp vẫn hiển thị kèm nhãn &quot;Chờ công bố&quot;.
               </div>
             </section>
           </>

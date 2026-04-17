@@ -84,6 +84,7 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
                   WHERE bdm.dangKyHocPhan = d
                     AND bdm.diemHe4 IS NOT NULL
                     AND bdm.diemHe4 >= 1.0
+                    AND (bdm.trangThai IS NULL OR bdm.trangThai = 'DA_CONG_BO')
               )
             """)
     List<String> findCompletedCourseCodes(@Param("svId") Long svId);
@@ -105,4 +106,25 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
     List<DangKyHocPhan> findTranscriptRows(
             @Param("svId") Long svId,
             @Param("hkId") Long hkId);
+
+    @Query("""
+            SELECT d FROM DangKyHocPhan d
+            JOIN FETCH d.sinhVien sv
+            LEFT JOIN FETCH d.bangDiemMon bdm
+            WHERE d.lopHocPhan.idLopHp = :idLopHp
+              AND d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')
+            ORDER BY sv.hoTen ASC
+            """)
+    List<DangKyHocPhan> findGradebookRowsForLop(@Param("idLopHp") Long idLopHp);
+
+    @Query("""
+            SELECT d FROM DangKyHocPhan d
+            JOIN FETCH d.sinhVien sv
+            JOIN FETCH d.lopHocPhan lhp
+            JOIN FETCH lhp.giangVien gv
+            LEFT JOIN FETCH gv.taiKhoan
+            LEFT JOIN FETCH d.bangDiemMon bdm
+            WHERE d.idDangKy = :idDangKy
+            """)
+    Optional<DangKyHocPhan> findWithLopAndGiangVienForGrade(@Param("idDangKy") Long idDangKy);
 }

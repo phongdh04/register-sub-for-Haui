@@ -29,7 +29,7 @@
 | 14 | Giám Sát Tài Chính (Kế Toán Admin) | ADMIN | **🟡 P2-Medium** | ⬜ Todo | Dashboard Kế toán. View sau khi Payment Gateaway chạy nuột. |
 | 15 | Báo Cáo Phân Tích (Analytics) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Vẽ biểu đồ Dashboard Chart. Trang trí Admin (Chỉ làm khi rảnh rỗi). |
 | 16 | Quản lý Lớp Giảng dạy & Điểm danh | TEACHER | **🟠 P1-High** | ✅ **Done** | API `/api/v1/lecturer/attendance/*` (lớp phụ trách, buổi điểm danh, PATCH dòng); bảng `Buoi_Diem_Danh`, `Diem_Danh_Dang_Ky`; SV `POST /api/v1/attendance/me/check-in`; UI `QunLLpGingDyimDanh.jsx`; seed `GV_SEED` ↔ `gv01`. |
-| 17 | Mạng lưới Nhập & Quản Lý Điểm | TEACHER | **🟡 P2-Medium** | ⬜ Todo | Teacher nhập điểm, cập nhật state thành Phê Duyệt đẩy về Bảng điểm SV. |
+| 17 | Mạng lưới Nhập & Quản Lý Điểm | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET/PATCH/POST /api/v1/lecturer/grades/...` (nháp `CHO_CONG_BO` → công bố `DA_CONG_BO`); GPA/transcript & tiên quyết chỉ tính điểm đã công bố; UI `MngLiNhpQunLimGradingSystem.jsx`. |
 | 18 | Gác thi & Xử lý Khiếu nại (Phúc khảo) | TEACHER | **🟢 P3-Low** | ⬜ Todo | Quy trình nghiệp vụ lắt nhắt của riêng Giảng viên, nhường chỗ cho code lõi Queue. |
 | 19 | Cánh Tay Phải "Cố Vấn Học Tập" | TEACHER | **🟡 P2-Medium** | ⬜ Todo | Bộ lọc sinh viên nợ > 12 tín chỉ rớt đài. Cần thiết nhưng không gấp. |
 | 20 | **Đăng nhập truyền thống & Quản lý Phiên** | ALL | **🔴 P0-Blocker** | ✅ Done | Cánh cửa bảo vệ. Không có JWT & Login (Spring Security) thì mọi API đều tịt ngòi 401. |
@@ -57,3 +57,4 @@
 - [x] Task 4 - Bảng điểm / Transcript: `BangDiemMon` + `TranscriptController` + `ITranscriptService/TranscriptServiceImpl` + `findTranscriptRows` + frontend `KimTraTinHcTpTranscriptDashboard.jsx` gọi `GET /api/v1/transcript/me`
 - [x] Task 9 - Thanh toán QR: `PaymentController` + `IPaymentService/PaymentServiceImpl` + `PaymentGatewayAdapter` (MOCK/VNPay/MoMo) + `GiaoDichThanhToan` + UI `ThanhTonQrCodeOpenApi.jsx`
 - [x] Task 16 - Điểm danh GV: `BuoiDiemDanh` + `DiemDanhDangKy` + `IAttendanceService/AttendanceServiceImpl` + `LecturerAttendanceController` + `StudentAttendanceController` + UI `QunLLpGingDyimDanh.jsx` + `DataSeeder` (GV_SEED)
+- [x] Task 17 - Nhập điểm GV: `BangDiemMonRepository` + `IGradingService/GradingServiceImpl` + `LecturerGradingController` + `findGradebookRowsForLop` + transcript filter công bố + UI `MngLiNhpQunLimGradingSystem.jsx`
