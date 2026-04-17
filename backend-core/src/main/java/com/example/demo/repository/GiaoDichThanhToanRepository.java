@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -33,4 +34,12 @@ public interface GiaoDichThanhToanRepository extends JpaRepository<GiaoDichThanh
             @Param("trangThai") String trangThai,
             @Param("provider") String provider,
             Pageable pageable);
+
+    @Query("""
+            SELECT g.trangThai, COUNT(g), COALESCE(SUM(g.soTien), 0)
+            FROM GiaoDichThanhToan g
+            GROUP BY g.trangThai
+            ORDER BY g.trangThai ASC
+            """)
+    List<Object[]> aggregatePaymentsByStatus();
 }

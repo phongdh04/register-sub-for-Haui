@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -30,4 +31,12 @@ public interface SinhVienRepository extends JpaRepository<SinhVien, Long> {
     Optional<SinhVien> findWithProfileByTaiKhoanId(@Param("userId") Long userId);
 
     boolean existsByMaSinhVien(String maSinhVien);
+
+    @Query("""
+            SELECT k.idKhoa, k.maKhoa, k.tenKhoa, COUNT(sv.idSinhVien)
+            FROM SinhVien sv JOIN sv.lop l JOIN l.nganhDaoTao n JOIN n.khoa k
+            GROUP BY k.idKhoa, k.maKhoa, k.tenKhoa
+            ORDER BY COUNT(sv.idSinhVien) DESC
+            """)
+    List<Object[]> countStudentsByKhoa();
 }

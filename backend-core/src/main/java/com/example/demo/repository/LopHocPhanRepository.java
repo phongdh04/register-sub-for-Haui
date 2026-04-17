@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -65,4 +66,12 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
     @Modifying
     @Query("UPDATE LopHocPhan l SET l.siSoThucTe = l.siSoThucTe - 1 WHERE l.idLopHp = :id AND l.siSoThucTe > 0")
     int decrementSiSoThucTe(@Param("id") Long id);
+
+    @Query("""
+            SELECT lhp.maLopHp, hp.tenHocPhan, lhp.siSoToiDa, lhp.siSoThucTe
+            FROM LopHocPhan lhp JOIN lhp.hocPhan hp
+            WHERE lhp.hocKy.idHocKy = :hkId AND lhp.siSoToiDa > 0
+            ORDER BY lhp.siSoThucTe DESC, lhp.maLopHp ASC
+            """)
+    List<Object[]> topClassesByHeadcountForHocKy(@Param("hkId") Long hkId, Pageable pageable);
 }

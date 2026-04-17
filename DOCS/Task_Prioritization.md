@@ -27,7 +27,7 @@
 | 12 | **Setup Cấu Hình Giờ Vàng (Queue / Kafka / Redis)**| ADMIN | **🔴 P0-Blocker** | ✅ **Done** | **🔥 TRÁI TIM DỰ ÁN GOLANG**. Triển khai: Cooldown → DistributedLock → Lua DECR Slot → Kafka Publish. |
 | 13 | Quản Lý Danh Mục Khung & Mở Lớp | ADMIN | **🔴 P0-Blocker** | ✅ **Done** | Admin phải bơm Data môn học Data Master vào CSDL thì SV mới đăng ký được. |
 | 14 | Giám Sát Tài Chính (Kế Toán Admin) | ADMIN | **🟡 P2-Medium** | ✅ **Done** | API `GET /api/v1/admin/finance/summary|receivables|payments|wallet-transactions` (tổng nợ HP−ví, phân trang, lọc TT); UI `GimStTiChnhKTonAdmin.jsx`. |
-| 15 | Báo Cáo Phân Tích (Analytics) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Vẽ biểu đồ Dashboard Chart. Trang trí Admin (Chỉ làm khi rảnh rỗi). |
+| 15 | Báo Cáo Phân Tích (Analytics) | ADMIN | **🟢 P3-Low** | ✅ **Done** | API `GET /api/v1/admin/analytics/dashboard` (đăng ký/HK, SV/khoa, GD theo TT, top lớp theo sĩ số HK mới nhất); UI `BoCoPhnTchAnalytics.jsx` biểu đồ thanh (CSS). |
 | 16 | Quản lý Lớp Giảng dạy & Điểm danh | TEACHER | **🟠 P1-High** | ✅ **Done** | API `/api/v1/lecturer/attendance/*` (lớp phụ trách, buổi điểm danh, PATCH dòng); bảng `Buoi_Diem_Danh`, `Diem_Danh_Dang_Ky`; SV `POST /api/v1/attendance/me/check-in`; UI `QunLLpGingDyimDanh.jsx`; seed `GV_SEED` ↔ `gv01`. |
 | 17 | Mạng lưới Nhập & Quản Lý Điểm | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET/PATCH/POST /api/v1/lecturer/grades/...` (nháp `CHO_CONG_BO` → công bố `DA_CONG_BO`); GPA/transcript & tiên quyết chỉ tính điểm đã công bố; UI `MngLiNhpQunLimGradingSystem.jsx`. |
 | 18 | Gác thi & Xử lý Khiếu nại (Phúc khảo) | TEACHER | **🟢 P3-Low** | ⬜ Todo | Quy trình nghiệp vụ lắt nhắt của riêng Giảng viên, nhường chỗ cho code lõi Queue. |
@@ -63,3 +63,4 @@
 - [x] Task 5 - Giỏ trước giờ G: `GioHangDangKy` + `GioHangDangKyRepository` + `IPreRegistrationCartService/PreRegistrationCartServiceImpl` + `PreRegistrationCartController` + `TkbSlotConflictUtils` (dùng chung xung đột TKB) + UI `TnhNngTrcGiGPreRegistrationGiLp.jsx`
 - [x] Task 11 - Lịch thi & đánh giá GV: `LichThi` + `PhieuDuThi` + `DanhGiaGiangVien` + `ExamScheduleController` + `LecturerRatingController` + services + `HocKyRepository.findTopByOrderByIdHocKyDesc` + `DataSeeder` demo + UI `LchThinhGiGv.jsx`
 - [x] Task 14 - Giám sát tài chính Admin: `IAdminFinanceService/AdminFinanceServiceImpl` + `AdminFinanceController` + queries `GiaoDichThanhToan`/`GiaoDichVi`/`DangKyHocPhan`/`ViSinhVien` + UI `GimStTiChnhKTonAdmin.jsx`
+- [x] Task 15 - Analytics Admin: `IAdminAnalyticsService/AdminAnalyticsServiceImpl` + `AdminAnalyticsController` + queries tổng hợp `DangKy`/`SinhVien`/`GiaoDichThanhToan`/`LopHocPhan` + UI `BoCoPhnTchAnalytics.jsx`

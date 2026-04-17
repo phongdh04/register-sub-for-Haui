@@ -156,4 +156,16 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
             GROUP BY d.sinhVien.idSinhVien
             """)
     List<Object[]> sumHocPhiDangKyGroupedBySinhVien();
+
+    @Query("SELECT COUNT(d) FROM DangKyHocPhan d WHERE d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')")
+    long countActiveRegistrations();
+
+    @Query("""
+            SELECT hk.idHocKy, hk.namHoc, hk.kyThu, COUNT(d)
+            FROM DangKyHocPhan d JOIN d.hocKy hk
+            WHERE d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')
+            GROUP BY hk.idHocKy, hk.namHoc, hk.kyThu
+            ORDER BY hk.idHocKy ASC
+            """)
+    List<Object[]> countActiveRegistrationsByHocKy();
 }
