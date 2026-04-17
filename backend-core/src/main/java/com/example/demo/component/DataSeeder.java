@@ -1,9 +1,11 @@
 package com.example.demo.component;
 
+import com.example.demo.domain.entity.GiangVien;
 import com.example.demo.domain.entity.Khoa;
 import com.example.demo.domain.entity.User;
 import com.example.demo.domain.enums.Role;
 import com.example.demo.domain.enums.Status;
+import com.example.demo.repository.GiangVienRepository;
 import com.example.demo.repository.KhoaRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final KhoaRepository khoaRepository;
+    private final GiangVienRepository giangVienRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -70,7 +73,21 @@ public class DataSeeder implements CommandLineRunner {
                     .build());
             log.info("Seeded Khoa test: CNTT");
         }
-        
+
+        // Liên kết gv01 ↔ hồ sơ Giảng viên (Task 16 – điểm danh / lớp phụ trách; cần Khoa CNTT)
+        if (!giangVienRepository.existsByMaGiangVien("GV_SEED")) {
+            khoaRepository.findByMaKhoa("CNTT").flatMap(k ->
+                    userRepository.findByUsername("gv01").map(u ->
+                            giangVienRepository.save(GiangVien.builder()
+                                    .maGiangVien("GV_SEED")
+                                    .tenGiangVien("Giảng viên Demo Seed")
+                                    .khoa(k)
+                                    .taiKhoan(u)
+                                    .build())
+                    )
+            ).ifPresent(gv -> log.info("Seeded GiangVien {} linked to gv01", gv.getMaGiangVien()));
+        }
+
         log.info("Database seeding completed.");
     }
 }

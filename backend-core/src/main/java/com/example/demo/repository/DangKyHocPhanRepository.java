@@ -6,7 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository cho bảng Dang_Ky_Hoc_Phan.
@@ -16,6 +18,11 @@ import java.util.List;
  */
 @Repository
 public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Long> {
+
+    List<DangKyHocPhan> findByLopHocPhan_IdLopHpAndTrangThaiDangKyIn(Long idLopHp, Collection<String> trangThais);
+
+    Optional<DangKyHocPhan> findFirstByLopHocPhan_IdLopHpAndSinhVien_IdSinhVienAndTrangThaiDangKyIn(
+            Long idLopHp, Long idSinhVien, Collection<String> trangThaiDangKys);
 
     /**
      * Kiểm tra SV đã đăng ký lớp này trong HK này chưa (chống ghi đè).

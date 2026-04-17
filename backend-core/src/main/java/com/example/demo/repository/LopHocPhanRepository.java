@@ -27,6 +27,27 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
 
     List<LopHocPhan> findByHocKy_IdHocKyAndTrangThai(Long idHocKy, String trangThai);
 
+    List<LopHocPhan> findByGiangVien_IdGiangVien(Long idGiangVien);
+
+    @Query("""
+            SELECT DISTINCT l FROM LopHocPhan l
+            JOIN FETCH l.hocPhan hp
+            JOIN FETCH l.hocKy hk
+            WHERE l.giangVien.idGiangVien = :gvId
+            ORDER BY hk.idHocKy DESC, hp.tenHocPhan ASC
+            """)
+    List<LopHocPhan> findTeachingClassesForGiangVien(@Param("gvId") Long gvId);
+
+    @Query("""
+            SELECT l FROM LopHocPhan l
+            JOIN FETCH l.giangVien gv
+            LEFT JOIN FETCH gv.taiKhoan
+            JOIN FETCH l.hocPhan
+            JOIN FETCH l.hocKy
+            WHERE l.idLopHp = :id
+            """)
+    Optional<LopHocPhan> findWithGiangVienForAttendance(@Param("id") Long id);
+
     boolean existsByMaLopHp(String maLopHp);
 
     /**
