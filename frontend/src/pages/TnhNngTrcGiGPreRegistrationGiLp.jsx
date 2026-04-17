@@ -1,346 +1,444 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const formatVnd = (n) => {
+  if (n == null || n === '') return '—';
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '—';
+  return new Intl.NumberFormat('vi-VN').format(x) + ' ₫';
+};
 
 const TnhNngTrcGiGPreRegistrationGiLp = () => {
+  const [cart, setCart] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [hocKyFilter, setHocKyFilter] = useState('');
+  const [idLopHp, setIdLopHp] = useState('');
+  const [hocKyAdd, setHocKyAdd] = useState('');
+  const [addBusy, setAddBusy] = useState(false);
+  const [addMsg, setAddMsg] = useState('');
+
+  const fetchCart = useCallback(async (hocKyId) => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      throw new Error('Vui lòng đăng nhập tài khoản sinh viên.');
+    }
+    const qs = hocKyId ? `?hocKyId=${encodeURIComponent(hocKyId)}` : '';
+    const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/me${qs}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(body.message || 'Không tải được giỏ đăng ký trước.');
+    }
+    return body;
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const hk = hocKyFilter.trim() || null;
+      const data = await fetchCart(hk);
+      setCart(data);
+    } catch (e) {
+      setError(e.message || 'Lỗi tải dữ liệu.');
+      setCart(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchCart, hocKyFilter]);
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const applySemesterFilter = () => {
+    load();
+  };
+
+  const addItem = async () => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      setAddMsg('Vui lòng đăng nhập.');
+      return;
+    }
+    const id = Number(idLopHp);
+    if (!Number.isFinite(id) || id <= 0) {
+      setAddMsg('Nhập id lớp học phần (số) hợp lệ.');
+      return;
+    }
+    setAddBusy(true);
+    setAddMsg('');
+    try {
+      const payload = { idLopHp: id };
+      const hk = hocKyAdd.trim();
+      if (hk) payload.hocKyId = Number(hk);
+      const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/items`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.message || 'Không thêm được lớp.');
+      }
+      setIdLopHp('');
+      await load();
+      setAddMsg('Đã thêm vào giỏ.');
+    } catch (e) {
+      setAddMsg(e.message || 'Lỗi thêm lớp.');
+    } finally {
+      setAddBusy(false);
+    }
+  };
+
+  const deleteCartLine = async (idGioHang) => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) throw new Error('Chưa đăng nhập.');
+    const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/items/${idGioHang}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok && res.status !== 204) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || 'Không xóa được.');
+    }
+  };
+
+  const removeItem = async (idGioHang) => {
+    try {
+      await deleteCartLine(idGioHang);
+      await load();
+    } catch (e) {
+      setError(e.message || 'Lỗi xóa dòng giỏ hàng.');
+    }
+  };
+
+  const clearCart = async () => {
+    if (!cart?.items?.length) return;
+    if (!window.confirm('Xóa toàn bộ môn trong giỏ đăng ký trước?')) return;
+    try {
+      for (const it of cart.items) {
+        await deleteCartLine(it.idGioHang);
+      }
+      await load();
+    } catch (e) {
+      setError(e.message || 'Lỗi khi xóa giỏ hàng.');
+      await load();
+    }
+  };
+
+  const hkBadge = cart?.hocKyLabel || '—';
+  const internalConflicts = cart?.soDoiTrungLichTrongGioHang ?? 0;
+  const vsOfficial = cart?.coTrungLichVoiDangKyChinhThuc;
+
   return (
     <>
-      
-<div className="flex min-h-screen">
-{/*  SideNavBar Component  */}
+      <div className="flex min-h-screen">
+        <main className="flex-1 flex flex-col min-w-0">
+          <div className="p-8 space-y-8 overflow-y-auto">
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
+              <div className="lg:col-span-2 space-y-4">
+                <span className="inline-block py-1 px-3 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-bold uppercase tracking-wider">
+                  {hkBadge}
+                </span>
+                <h2 className="text-4xl lg:text-5xl font-extrabold text-on-surface tracking-tight leading-tight">
+                  Lên kế hoạch <span className="text-primary italic font-serif">trước giờ G.</span>
+                </h2>
+                <p className="text-on-surface-variant max-w-2xl leading-relaxed text-lg">
+                  Giỏ đăng ký trước (bản nháp) theo học kỳ: thêm lớp theo <code className="text-xs bg-surface-container-high px-1 rounded">idLopHp</code>, kiểm tra trùng lịch trong giỏ và với đăng ký chính thức. API:{' '}
+                  <code className="text-xs bg-surface-container-high px-1 rounded">GET/POST/DELETE /api/v1/pre-reg/cart/*</code>
+                </p>
+                <div className="flex flex-wrap gap-3 items-end pt-2">
+                  <div>
+                    <label className="block text-xs text-on-surface-variant mb-1">Lọc theo học kỳ (id, để trống = HK hiện hành)</label>
+                    <input
+                      type="text"
+                      value={hocKyFilter}
+                      onChange={(e) => setHocKyFilter(e.target.value)}
+                      className="border border-outline-variant rounded-lg px-3 py-2 text-sm w-40 bg-surface"
+                      placeholder="id học kỳ"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applySemesterFilter}
+                    className="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface text-sm font-semibold hover:opacity-90"
+                  >
+                    Áp dụng HK
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-4">
+                <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-on-surface-variant font-medium">Trạng thái cổng chính thức:</span>
+                    <span className="text-primary font-bold">Chưa mở (demo)</span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full py-4 rounded-full bg-primary opacity-50 cursor-not-allowed text-on-primary font-bold flex items-center justify-center gap-2 transition-all"
+                  >
+                    <span className="material-symbols-outlined">send</span>
+                    <span>Xác nhận Nộp Lưới Môn</span>
+                  </button>
+                  <p className="text-[10px] text-center text-on-surface-variant italic">
+                    Nút này dành cho luồng đăng ký chính thức khi cổng mở; giỏ trước giờ G chỉ là bản nháp.
+                  </p>
+                </div>
+              </div>
+            </section>
 
-{/*  Main Content Area  */}
-<main className="flex-1 flex flex-col min-w-0">
-{/*  TopNavBar Component  */}
+            {error && (
+              <div className="rounded-xl border border-error/30 bg-error-container/20 px-4 py-3 text-sm text-error font-medium">{error}</div>
+            )}
+            {loading && <p className="text-on-surface-variant text-sm">Đang tải giỏ hàng…</p>}
 
-{/*  Content Canvas  */}
-<div className="p-8 space-y-8 overflow-y-auto">
-{/*  Hero/Header Section  */}
-<section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
-<div className="lg:col-span-2 space-y-4">
-<span className="inline-block py-1 px-3 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-bold uppercase tracking-wider">Học kỳ 1 - 2024-2025</span>
-<h2 className="text-4xl lg:text-5xl font-extrabold text-on-surface tracking-tight leading-tight">
-                            Lên kế hoạch <span className="text-primary italic font-serif">trước giờ G.</span>
-</h2>
-<p className="text-on-surface-variant max-w-2xl leading-relaxed text-lg">
-                            Kiểm tra xung đột lịch học và điều kiện tiên quyết tự động để sẵn sàng cho kỳ đăng ký chính thức. Hệ thống sẽ tự động đồng bộ khi cổng đăng ký mở.
-                        </p>
-</div>
-<div className="flex flex-col gap-4">
-<div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm space-y-3">
-<div className="flex items-center justify-between">
-<span className="text-on-surface-variant font-medium">Thời gian mở cổng:</span>
-<span className="text-primary font-bold">Còn 14:22:10</span>
-</div>
-<button className="w-full py-4 rounded-full bg-primary opacity-50 cursor-not-allowed text-on-primary font-bold flex items-center justify-center gap-2 transition-all">
-<span className="material-symbols-outlined">send</span>
-<span>Xác nhận Nộp Lưới Môn</span>
-</button>
-<p className="text-[10px] text-center text-on-surface-variant italic">Nút này sẽ hoạt động khi tới giờ đăng ký chính thức.</p>
-</div>
-</div>
-</section>
-{/*  Status Cards (Bento Grid Style)  */}
-<section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-<div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">
-<div className="flex justify-between items-start">
-<span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Tổng tín chỉ</span>
-<span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">menu_book</span>
-</div>
-<span className="text-3xl font-black text-on-surface">18 / 24</span>
-</div>
-<div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">
-<div className="flex justify-between items-start">
-<span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Môn dự kiến</span>
-<span className="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">list_alt</span>
-</div>
-<span className="text-3xl font-black text-on-surface">06</span>
-</div>
-<div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 border-2 border-error/10 group hover:translate-y-[-4px] transition-transform duration-300">
-<div className="flex justify-between items-start">
-<span className="text-xs font-bold uppercase tracking-widest text-error">Xung đột lịch</span>
-<span className="material-symbols-outlined text-error group-hover:scale-110 transition-transform">event_busy</span>
-</div>
-<span className="text-3xl font-black text-error">02</span>
-</div>
-<div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">
-<div className="flex justify-between items-start">
-<span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Học phí ước tính</span>
-<span className="material-symbols-outlined text-tertiary group-hover:scale-110 transition-transform">payments</span>
-</div>
-<span className="text-3xl font-black text-on-surface">12.450.000đ</span>
-</div>
-</section>
-{/*  Clean LIST of Selected Subjects (Main Focus)  */}
-<section className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden border-2 border-surface-container">
-<div className="px-8 py-6 bg-surface-container-low flex items-center justify-between border-b border-outline-variant/20">
-<h3 className="text-xl font-bold text-on-surface">Danh sách môn đã chọn</h3>
-<div className="flex gap-2">
-<button className="px-4 py-2 rounded-lg bg-surface-container text-on-surface-variant text-sm font-semibold hover:bg-surface-container-high transition-colors flex items-center gap-2">
-<span className="material-symbols-outlined text-sm">print</span>
-<span>In bản nháp</span>
-</button>
-<button className="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-colors flex items-center gap-2">
-<span className="material-symbols-outlined text-sm">add</span>
-<span>Thêm môn học</span>
-</button>
-</div>
-</div>
-<div className="overflow-x-auto">
-<table className="w-full text-left border-collapse">
-<thead>
-<tr className="bg-surface-container-low">
-<th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80">Tên lớp (Mã lớp)</th>
-<th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80">Tên học phần</th>
-<th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-center">Tín chỉ</th>
-<th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-center">Sĩ số tối đa</th>
-<th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-right">Học phí</th>
-<th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-right">Thao tác</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-surface-container">
-{/*  Row 1: Normal  */}
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="px-8 py-5">
-<div className="flex flex-col">
-<span className="text-sm font-bold text-primary">CS201.O21</span>
-<span className="text-[10px] text-on-surface-variant">Lớp Chất lượng cao</span>
-</div>
-</td>
-<td className="px-8 py-5">
-<span className="text-sm font-medium text-on-surface">Cấu trúc dữ liệu và Giải thuật</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm font-medium">4</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm">45/50</span>
-</td>
-<td className="px-8 py-5 text-right font-medium text-sm">2.800.000đ</td>
-<td className="px-8 py-5 text-right">
-<button className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all">
-<span className="material-symbols-outlined text-lg">delete</span>
-</button>
-</td>
-</tr>
-{/*  Row 2: Conflict (Time)  */}
-<tr className="bg-error-container/10 hover:bg-error-container/20 transition-colors">
-<td className="px-8 py-5">
-<div className="flex flex-col">
-<span className="text-sm font-bold text-error">IT302.N12</span>
-<span className="text-[10px] text-error font-semibold flex items-center gap-1">
-<span className="material-symbols-outlined text-[12px]">warning</span> TRÙNG LỊCH
-                                            </span>
-</div>
-</td>
-<td className="px-8 py-5">
-<span className="text-sm font-medium text-on-surface">Lập trình Web nâng cao</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm font-medium">3</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm">30/40</span>
-</td>
-<td className="px-8 py-5 text-right font-medium text-sm">2.100.000đ</td>
-<td className="px-8 py-5 text-right">
-<button className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all">
-<span className="material-symbols-outlined text-lg">delete</span>
-</button>
-</td>
-</tr>
-{/*  Row 3: Prerequisite Warning  */}
-<tr className="bg-secondary-container/5 hover:bg-secondary-container/10 transition-colors">
-<td className="px-8 py-5">
-<div className="flex flex-col">
-<span className="text-sm font-bold text-primary">AI401.M11</span>
-<span className="text-[10px] text-secondary font-bold flex items-center gap-1">
-<span className="material-symbols-outlined text-[12px]">priority_high</span> THIẾU TIÊN QUYẾT
-                                            </span>
-</div>
-</td>
-<td className="px-8 py-5">
-<span className="text-sm font-medium text-on-surface">Trí tuệ nhân tạo căn bản</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm font-medium">3</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm">15/30</span>
-</td>
-<td className="px-8 py-5 text-right font-medium text-sm">2.550.000đ</td>
-<td className="px-8 py-5 text-right">
-<button className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all">
-<span className="material-symbols-outlined text-lg">delete</span>
-</button>
-</td>
-</tr>
-{/*  Row 4: Conflict (Overlap)  */}
-<tr className="bg-error-container/10 hover:bg-error-container/20 transition-colors">
-<td className="px-8 py-5">
-<div className="flex flex-col">
-<span className="text-sm font-bold text-error">MA102.K15</span>
-<span className="text-[10px] text-error font-semibold flex items-center gap-1">
-<span className="material-symbols-outlined text-[12px]">warning</span> TRÙNG LỊCH
-                                            </span>
-</div>
-</td>
-<td className="px-8 py-5">
-<span className="text-sm font-medium text-on-surface">Xác suất Thống kê</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm font-medium">3</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm">120/120</span>
-</td>
-<td className="px-8 py-5 text-right font-medium text-sm">1.800.000đ</td>
-<td className="px-8 py-5 text-right">
-<button className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all">
-<span className="material-symbols-outlined text-lg">delete</span>
-</button>
-</td>
-</tr>
-{/*  Row 5: Normal  */}
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="px-8 py-5">
-<div className="flex flex-col">
-<span className="text-sm font-bold text-primary">EN101.B01</span>
-<span className="text-[10px] text-on-surface-variant">Lớp tăng cường</span>
-</div>
-</td>
-<td className="px-8 py-5">
-<span className="text-sm font-medium text-on-surface">Tiếng Anh chuyên ngành 1</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm font-medium">2</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm">25/40</span>
-</td>
-<td className="px-8 py-5 text-right font-medium text-sm">1.500.000đ</td>
-<td className="px-8 py-5 text-right">
-<button className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all">
-<span className="material-symbols-outlined text-lg">delete</span>
-</button>
-</td>
-</tr>
-{/*  Row 6: Normal  */}
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="px-8 py-5">
-<div className="flex flex-col">
-<span className="text-sm font-bold text-primary">PE102.A01</span>
-<span className="text-[10px] text-on-surface-variant">Giáo dục thể chất</span>
-</div>
-</td>
-<td className="px-8 py-5">
-<span className="text-sm font-medium text-on-surface">Bóng rổ 1</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm font-medium">3</span>
-</td>
-<td className="px-8 py-5 text-center">
-<span className="text-sm">28/30</span>
-</td>
-<td className="px-8 py-5 text-right font-medium text-sm">1.700.000đ</td>
-<td className="px-8 py-5 text-right">
-<button className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all">
-<span className="material-symbols-outlined text-lg">delete</span>
-</button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-{/*  Footer/Summary Widget  */}
-<div className="bg-surface-container-low px-8 py-10">
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-<div className="lg:col-span-2 space-y-3">
-<div className="flex items-center gap-2 text-error font-bold">
-<span className="material-symbols-outlined">error</span>
-<span className="text-sm">Phát hiện 2 xung đột lịch học</span>
-</div>
-<div className="flex items-center gap-2 text-secondary font-bold">
-<span className="material-symbols-outlined">report_problem</span>
-<span className="text-sm">1 môn chưa đủ điều kiện tiên quyết: AI401.M11</span>
-</div>
-<p className="text-on-surface-variant text-xs mt-4">
-                                    * Học phí hiển thị chỉ là mức ước tính dựa trên số tín chỉ. Mức phí chính thức có thể thay đổi dựa trên các khoản phụ thu hoặc miễn giảm.
-                                </p>
-</div>
-<div className="lg:col-span-2 flex flex-col items-end gap-2">
-<div className="flex items-center gap-8 w-full max-w-md justify-between border-b border-outline-variant/30 pb-2">
-<span className="text-on-surface-variant font-medium">Tổng số tín chỉ dự kiến:</span>
-<span className="text-2xl font-black text-on-surface">18 Tín chỉ</span>
-</div>
-<div className="flex items-center gap-8 w-full max-w-md justify-between pt-2">
-<span className="text-on-surface-variant font-bold text-lg">Tổng học phí dự kiến:</span>
-<span className="text-3xl font-black text-primary">12.450.000đ</span>
-</div>
-<div className="mt-8 flex gap-4">
-<button className="px-8 py-3 rounded-full border-2 border-primary text-primary font-bold hover:bg-primary-container/10 transition-colors">
-                                        Hủy giỏ hàng
-                                    </button>
-<button className="px-10 py-3 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                                        Lưu thay đổi nháp
-                                    </button>
-</div>
-</div>
-</div>
-</div>
-</section>
-{/*  Recommendation Section  */}
-<section className="space-y-6">
-<h3 className="text-xl font-bold flex items-center gap-2">
-<span className="material-symbols-outlined text-secondary">tips_and_updates</span>
-                        Gợi ý cho lộ trình của bạn
-                    </h3>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-<div className="bg-surface-container p-6 rounded-xl border-l-4 border-secondary space-y-3">
-<h4 className="font-bold text-on-surface">Thay thế lịch xung đột</h4>
-<p className="text-sm text-on-surface-variant">Lớp MA102.K15 đang bị trùng, bạn có thể chọn lớp MA102.K18 vào sáng Thứ 5 để tránh xung đột.</p>
-<a className="text-primary text-sm font-bold flex items-center gap-1 hover:underline" href="#">
-                                Xem các lớp thay thế <span className="material-symbols-outlined text-sm">arrow_forward</span>
-</a>
-</div>
-<div className="bg-surface-container p-6 rounded-xl border-l-4 border-primary space-y-3">
-<h4 className="font-bold text-on-surface">Môn học tương đương</h4>
-<p className="text-sm text-on-surface-variant">AI401.M11 đang thiếu tiên quyết, bạn có thể hoàn thành môn 'Logic Toán' trước hoặc đăng ký song hành nếu được phép.</p>
-<a className="text-primary text-sm font-bold flex items-center gap-1 hover:underline" href="#">
-                                Xem quy định <span className="material-symbols-outlined text-sm">open_in_new</span>
-</a>
-</div>
-<div className="relative overflow-hidden group rounded-xl bg-primary text-on-primary p-6">
-<div className="relative z-10 space-y-2">
-<h4 className="font-bold">Nhận thông báo tự động</h4>
-<p className="text-xs text-on-primary/80">Nhận thông báo ngay khi lớp học có thêm chỗ trống hoặc thay đổi giảng viên.</p>
-<button className="mt-4 px-4 py-2 bg-on-primary text-primary rounded-full text-xs font-bold hover:bg-surface transition-colors">Bật thông báo</button>
-</div>
-<span className="material-symbols-outlined absolute -bottom-4 -right-4 text-8xl opacity-10 rotate-12">notifications_active</span>
-</div>
-</div>
-</section>
-</div>
-</main>
-</div>
-{/*  Mobile Bottom Navigation  */}
-<nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-50 border-t border-slate-200 flex justify-around py-2 z-50">
-<a className="flex flex-col items-center p-2 text-slate-400" href="#">
-<span className="material-symbols-outlined">dashboard</span>
-<span className="text-[10px] font-bold">DASHBOARD</span>
-</a>
-<a className="flex flex-col items-center p-2 text-primary" href="#">
-<span className="material-symbols-outlined" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>app_registration</span>
-<span className="text-[10px] font-bold">ĐĂNG KÝ</span>
-</a>
-<a className="flex flex-col items-center p-2 text-slate-400" href="#">
-<span className="material-symbols-outlined">calendar_month</span>
-<span className="text-[10px] font-bold">LỊCH</span>
-</a>
-<a className="flex flex-col items-center p-2 text-slate-400" href="#">
-<span className="material-symbols-outlined">person</span>
-<span className="text-[10px] font-bold">HỒ SƠ</span>
-</a>
-</nav>
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Tổng tín chỉ</span>
+                  <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">menu_book</span>
+                </div>
+                <span className="text-3xl font-black text-on-surface">{cart?.tongTinChi ?? '—'}</span>
+              </div>
+              <div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Môn trong giỏ</span>
+                  <span className="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">list_alt</span>
+                </div>
+                <span className="text-3xl font-black text-on-surface">{cart?.tongSoMon ?? '—'}</span>
+              </div>
+              <div
+                className={`bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300 ${
+                  internalConflicts > 0 ? 'border-2 border-error/10' : ''
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <span className={`text-xs font-bold uppercase tracking-widest ${internalConflicts > 0 ? 'text-error' : 'text-on-surface-variant'}`}>
+                    Cặp trùng lịch (trong giỏ)
+                  </span>
+                  <span className={`material-symbols-outlined group-hover:scale-110 transition-transform ${internalConflicts > 0 ? 'text-error' : 'text-on-surface-variant'}`}>
+                    event_busy
+                  </span>
+                </div>
+                <span className={`text-3xl font-black ${internalConflicts > 0 ? 'text-error' : 'text-on-surface'}`}>{internalConflicts}</span>
+              </div>
+              <div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Học phí ước tính</span>
+                  <span className="material-symbols-outlined text-tertiary group-hover:scale-110 transition-transform">payments</span>
+                </div>
+                <span className="text-xl font-black text-on-surface leading-tight">{cart ? formatVnd(cart.tongHocPhi) : '—'}</span>
+              </div>
+            </section>
 
+            <section className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden border-2 border-surface-container">
+              <div className="px-8 py-6 bg-surface-container-low flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between border-b border-outline-variant/20">
+                <h3 className="text-xl font-bold text-on-surface">Danh sách môn đã chọn</h3>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
+                  <div className="flex gap-2 flex-wrap items-end">
+                    <div>
+                      <label className="block text-[10px] uppercase text-on-surface-variant mb-1">id lớp HP</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={idLopHp}
+                        onChange={(e) => setIdLopHp(e.target.value)}
+                        className="border border-outline-variant rounded-lg px-3 py-2 text-sm w-36 bg-surface"
+                        placeholder="vd: 1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-on-surface-variant mb-1">HK khi thêm (tuỳ chọn)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={hocKyAdd}
+                        onChange={(e) => setHocKyAdd(e.target.value)}
+                        className="border border-outline-variant rounded-lg px-3 py-2 text-sm w-36 bg-surface"
+                        placeholder="id HK"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={addBusy}
+                      onClick={addItem}
+                      className="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                    >
+                      {addBusy ? 'Đang thêm…' : 'Thêm lớp'}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-4 py-2 rounded-lg bg-surface-container text-on-surface-variant text-sm font-semibold hover:bg-surface-container-high transition-colors flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">print</span>
+                      <span>In bản nháp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={load}
+                      className="px-4 py-2 rounded-lg bg-surface-container text-on-surface-variant text-sm font-semibold hover:bg-surface-container-high transition-colors"
+                    >
+                      Làm mới
+                    </button>
+                  </div>
+                </div>
+                {addMsg && <p className="text-sm text-on-surface-variant">{addMsg}</p>}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-surface-container-low">
+                      <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80">Mã lớp</th>
+                      <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80">Tên học phần</th>
+                      <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-center">Tín chỉ</th>
+                      <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-right">Học phí</th>
+                      <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant/80 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container">
+                    {!loading && cart && cart.items?.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-10 text-center text-on-surface-variant text-sm">
+                          Giỏ trống. Thêm lớp bằng id lớp học phần (có thể lấy từ trang tìm kiếm môn / seed dữ liệu).
+                        </td>
+                      </tr>
+                    )}
+                    {cart?.items?.map((row) => (
+                      <tr key={row.idGioHang} className="hover:bg-surface-container-low transition-colors group">
+                        <td className="px-8 py-5">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-primary">{row.maLopHp || '—'}</span>
+                            <span className="text-[10px] text-on-surface-variant">id: {row.idLopHp}</span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <span className="text-sm font-medium text-on-surface">{row.tenHocPhan || '—'}</span>
+                          {row.maHocPhan && <div className="text-[10px] text-on-surface-variant mt-0.5">{row.maHocPhan}</div>}
+                        </td>
+                        <td className="px-8 py-5 text-center">
+                          <span className="text-sm font-medium">{row.soTinChi ?? '—'}</span>
+                        </td>
+                        <td className="px-8 py-5 text-right font-medium text-sm">{formatVnd(row.hocPhi)}</td>
+                        <td className="px-8 py-5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeItem(row.idGioHang)}
+                            className="p-2 text-outline hover:text-error hover:bg-error-container rounded-full transition-all"
+                            aria-label="Xóa khỏi giỏ"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="bg-surface-container-low px-8 py-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  <div className="lg:col-span-2 space-y-3">
+                    {internalConflicts > 0 && (
+                      <div className="flex items-center gap-2 text-error font-bold">
+                        <span className="material-symbols-outlined">error</span>
+                        <span className="text-sm">
+                          Phát hiện {internalConflicts} cặp lớp trong giỏ có tiết trùng (theo TKB JSON).
+                        </span>
+                      </div>
+                    )}
+                    {vsOfficial && (
+                      <div className="flex items-center gap-2 text-secondary font-bold">
+                        <span className="material-symbols-outlined">report_problem</span>
+                        <span className="text-sm">Có lớp trong giỏ trùng lịch với đăng ký chính thức trong cùng học kỳ.</span>
+                      </div>
+                    )}
+                    {!internalConflicts && !vsOfficial && cart?.items?.length > 0 && (
+                      <p className="text-sm text-on-surface-variant">Không phát hiện trùng lịch trong giỏ và với đăng ký hiện tại.</p>
+                    )}
+                    <p className="text-on-surface-variant text-xs mt-4">
+                      * Học phí hiển thị theo dữ liệu lớp học phần; mức phí chính thức có thể thay đổi khi đăng ký thật.
+                    </p>
+                  </div>
+                  <div className="lg:col-span-2 flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-8 w-full max-w-md justify-between border-b border-outline-variant/30 pb-2">
+                      <span className="text-on-surface-variant font-medium">Tổng số tín chỉ dự kiến:</span>
+                      <span className="text-2xl font-black text-on-surface">{cart?.tongTinChi ?? 0} tín chỉ</span>
+                    </div>
+                    <div className="flex items-center gap-8 w-full max-w-md justify-between pt-2">
+                      <span className="text-on-surface-variant font-bold text-lg">Tổng học phí dự kiến:</span>
+                      <span className="text-3xl font-black text-primary">{cart ? formatVnd(cart.tongHocPhi) : '—'}</span>
+                    </div>
+                    <div className="mt-8 flex gap-4 flex-wrap justify-end">
+                      <button
+                        type="button"
+                        onClick={clearCart}
+                        className="px-8 py-3 rounded-full border-2 border-primary text-primary font-bold hover:bg-primary-container/10 transition-colors"
+                      >
+                        Hủy giỏ hàng
+                      </button>
+                      <button
+                        type="button"
+                        onClick={load}
+                        className="px-10 py-3 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                      >
+                        Lưu / làm mới nháp
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">tips_and_updates</span>
+                Gợi ý
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-surface-container p-6 rounded-xl border-l-4 border-secondary space-y-3">
+                  <h4 className="font-bold text-on-surface">Tránh trùng lịch</h4>
+                  <p className="text-sm text-on-surface-variant">
+                    Nếu số cặp trùng lịch &gt; 0, hãy xóa một trong các lớp xung đột hoặc chọn lớp khác (id lớp khác) trước khi đăng ký chính thức.
+                  </p>
+                </div>
+                <div className="bg-surface-container p-6 rounded-xl border-l-4 border-primary space-y-3">
+                  <h4 className="font-bold text-on-surface">Đồng bộ học kỳ</h4>
+                  <p className="text-sm text-on-surface-variant">
+                    Dùng &quot;Áp dụng HK&quot; để xem giỏ theo học kỳ cụ thể; khi thêm lớp có thể truyền thêm học kỳ nếu khác HK mặc định của hệ thống.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-50 border-t border-slate-200 flex justify-around py-2 z-50">
+        <a className="flex flex-col items-center p-2 text-slate-400" href="#">
+          <span className="material-symbols-outlined">dashboard</span>
+          <span className="text-[10px] font-bold">DASHBOARD</span>
+        </a>
+        <a className="flex flex-col items-center p-2 text-primary" href="#">
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>
+            app_registration
+          </span>
+          <span className="text-[10px] font-bold">ĐĂNG KÝ</span>
+        </a>
+        <a className="flex flex-col items-center p-2 text-slate-400" href="#">
+          <span className="material-symbols-outlined">calendar_month</span>
+          <span className="text-[10px] font-bold">LỊCH</span>
+        </a>
+        <a className="flex flex-col items-center p-2 text-slate-400" href="#">
+          <span className="material-symbols-outlined">person</span>
+          <span className="text-[10px] font-bold">HỒ SƠ</span>
+        </a>
+      </nav>
     </>
   );
 };
