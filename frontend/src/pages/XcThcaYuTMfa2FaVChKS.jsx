@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { API_BASE_URL, authHeaders } from '../config/api';
 
 const XcThcaYuTMfa2FaVChKS = () => {
   const [loading, setLoading] = useState(true);
@@ -12,14 +11,6 @@ const XcThcaYuTMfa2FaVChKS = () => {
   const [hasEmail, setHasEmail] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [wantEnable, setWantEnable] = useState(false);
-
-  const authHeaders = useCallback(() => {
-    const token = localStorage.getItem('jwt_token');
-    return {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-  }, []);
 
   const loadStatus = useCallback(async () => {
     setErr('');
@@ -41,7 +32,7 @@ const XcThcaYuTMfa2FaVChKS = () => {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, []);
 
   useEffect(() => {
     loadStatus();

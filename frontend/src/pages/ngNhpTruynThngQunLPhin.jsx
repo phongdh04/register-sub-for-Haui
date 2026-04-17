@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 
 const NgNhpTruynThngQunLPhin = () => {
   const [username, setUsername] = useState('');
@@ -14,6 +13,13 @@ const NgNhpTruynThngQunLPhin = () => {
   const [mfaHint, setMfaHint] = useState('');
   const [otp, setOtp] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.forbidden) {
+      setErrorMsg('Tài khoản của bạn không có quyền truy cập trang đó. Hãy đăng nhập đúng vai trò.');
+    }
+  }, [location.state]);
 
   const persistSessionAndRedirect = (data) => {
     localStorage.setItem('jwt_token', data.token);

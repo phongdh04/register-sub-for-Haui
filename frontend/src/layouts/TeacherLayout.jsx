@@ -1,7 +1,16 @@
 import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { clearSession } from '../config/api';
 
 const TeacherLayout = () => {
+  const navigate = useNavigate();
+  const username = localStorage.getItem('username') || '';
+
+  const logout = () => {
+    clearSession();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className="flex bg-gray-100 min-h-screen">
       <aside className="w-64 bg-white shadow-md flex-shrink-0 flex flex-col hidden md:flex border-r border-[#dce2f7]">
@@ -35,8 +44,9 @@ const TeacherLayout = () => {
       </aside>
       
       <main className="flex-1 overflow-auto bg-[#f9f9ff]">
-        <header className="bg-white shadow-sm p-4 flex items-center justify-between">
-           <h1 className="text-xl font-bold text-[#141b2b]">Teacher Portal</h1>
+        <header className="bg-white shadow-sm p-4 flex items-center justify-between gap-4">
+          <h1 className="text-xl font-bold text-[#141b2b]">Teacher Portal</h1>
+          {username && <span className="text-sm text-[#334155] hidden sm:inline truncate max-w-[12rem]">{username}</span>}
         </header>
         <div className="p-4">
            <Outlet />

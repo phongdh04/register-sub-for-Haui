@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 
+import RequireAuth from './components/RequireAuth';
 import DashboardSinhVinTrangCh from './pages/DashboardSinhVinTrangCh';
 import TraCuHSCNhnThTcOnline from './pages/TraCuHSCNhnThTcOnline';
 import CyKhungChngTrnhDegreeAuditRoadmap from './pages/CyKhungChngTrnhDegreeAuditRoadmap';
@@ -27,26 +28,42 @@ import GcThiXLKhiuNiPhcKho from './pages/GcThiXLKhiuNiPhcKho';
 import CnhTayPhiCVnHcTpAcademicAdvising from './pages/CnhTayPhiCVnHcTpAcademicAdvising';
 import TeacherLayout from './layouts/TeacherLayout';
 import ngNhpTruynThngQunLPhin from './pages/ngNhpTruynThngQunLPhin';
-import AllLayout from './layouts/AllLayout';
 
 function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/login" element={<ngNhpTruynThngQunLPhin />} />
+        <Route path="/all/ngnhptruynthngqunlphin" element={<Navigate to="/login" replace />} />
+
         <Route path="/" element={
-          <div className="min-h-screen bg-[#f1f3ff] flex flex-col items-center justify-center p-4">
-            <h1 className="text-4xl font-black text-[#001453] mb-8">Hệ Thống Phân Quyền EduPort</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-4xl">
-              <Link to="/student" className="block p-4 border rounded bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Student Portal</Link>
-<Link to="/admin" className="block p-4 border rounded bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Admin Portal</Link>
-<Link to="/teacher" className="block p-4 border rounded bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Teacher Portal</Link>
-<Link to="/all" className="block p-4 border rounded bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">All Portal</Link>
+          <div className="min-h-screen bg-[#f1f3ff] flex flex-col items-center justify-center p-6">
+            <h1 className="text-4xl font-black text-[#001453] mb-2 text-center">EduPort</h1>
+            <p className="text-[#00288e] mb-8 text-center max-w-lg">Cổng đăng ký học phần — đăng nhập theo vai trò, sau đó chọn portal tương ứng.</p>
+            <Link
+              to="/login"
+              className="mb-10 px-8 py-4 rounded-full bg-[#00288e] text-white font-bold text-lg shadow-lg hover:bg-[#001a5c] transition text-center"
+            >
+              Đăng nhập
+            </Link>
+            <p className="text-sm text-[#334155] mb-4 font-semibold uppercase tracking-wide">Portal (cần đúng JWT)</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+              <Link to="/student" className="block p-4 border rounded-xl bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Student Portal</Link>
+              <Link to="/admin" className="block p-4 border rounded-xl bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Admin Portal</Link>
+              <Link to="/teacher" className="block p-4 border rounded-xl bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Teacher Portal</Link>
             </div>
           </div>
         } />
-        
-        <Route path="/student" element={<StudentLayout />}>
-          <Route index element={<div className="p-8 text-center text-gray-500">Welcome to Student Portal. Select a module from the sidebar.</div>} />
+
+        <Route
+          path="/student"
+          element={
+            <RequireAuth roles={['ROLE_STUDENT']}>
+              <StudentLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Navigate to="/student/dashboardsinhvintrangch" replace />} />
           <Route path="dashboardsinhvintrangch" element={<DashboardSinhVinTrangCh />} />
           <Route path="tracuhscnhnthtconline" element={<TraCuHSCNhnThTcOnline />} />
           <Route path="cykhungchngtrnhdegreeauditroadmap" element={<CyKhungChngTrnhDegreeAuditRoadmap />} />
@@ -59,8 +76,15 @@ function App() {
           <Route path="dchvthikhabiuthngminh" element={<DchVThiKhaBiuThngMinh />} />
           <Route path="lchthinhgigv" element={<LchThinhGiGv />} />
         </Route>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<div className="p-8 text-center text-gray-500">Welcome to Admin Portal. Select a module from the sidebar.</div>} />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth roles={['ROLE_ADMIN']}>
+              <AdminLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Navigate to="/admin/bocophntchanalytics" replace />} />
           <Route path="setupcuhnhgivngtrafficsplittingqueuecontrol" element={<SetupCuHnhGiVngTrafficSplittingQueueControl />} />
           <Route path="qunldanhmckhungmlpdatamaster" element={<QunLDanhMcKhungMLpDataMaster />} />
           <Route path="gimsttichnhktonadmin" element={<GimStTiChnhKTonAdmin />} />
@@ -69,17 +93,21 @@ function App() {
           <Route path="xcthcayutmfa2favchks" element={<XcThcaYuTMfa2FaVChKS />} />
           <Route path="lchsnhtkduchnaudittrailslogging" element={<LchSNhtKDuChnAuditTrailsLogging />} />
         </Route>
-        <Route path="/teacher" element={<TeacherLayout />}>
-          <Route index element={<div className="p-8 text-center text-gray-500">Welcome to Teacher Portal. Select a module from the sidebar.</div>} />
+        <Route
+          path="/teacher"
+          element={
+            <RequireAuth roles={['ROLE_LECTURER']}>
+              <TeacherLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Navigate to="/teacher/qunllpgingdyimdanh" replace />} />
           <Route path="qunllpgingdyimdanh" element={<QunLLpGingDyimDanh />} />
           <Route path="mnglinhpqunlimgradingsystem" element={<MngLiNhpQunLimGradingSystem />} />
           <Route path="gcthixlkhiuniphckho" element={<GcThiXLKhiuNiPhcKho />} />
           <Route path="cnhtayphicvnhctpacademicadvising" element={<CnhTayPhiCVnHcTpAcademicAdvising />} />
         </Route>
-        <Route path="/all" element={<AllLayout />}>
-          <Route index element={<div className="p-8 text-center text-gray-500">Welcome to All Portal. Select a module from the sidebar.</div>} />
-          <Route path="ngnhptruynthngqunlphin" element={<ngNhpTruynThngQunLPhin />} />
-        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { API_BASE_URL, authHeaders } from '../config/api';
 
 const formatVnd = (n) => {
   if (n == null || n === '') return '—';
@@ -37,14 +36,6 @@ const GimStTiChnhKTonAdmin = () => {
   const [wxPage, setWxPage] = useState(0);
   const [wxData, setWxData] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const authHeaders = () => {
-    const token = localStorage.getItem('jwt_token');
-    return {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-  };
 
   const loadSummary = useCallback(async () => {
     const res = await fetch(`${API_BASE_URL}/api/v1/admin/finance/summary`, { headers: authHeaders() });

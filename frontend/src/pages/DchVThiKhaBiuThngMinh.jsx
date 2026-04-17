@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { API_BASE_URL } from '../config/api';
 const WEEK_DAYS = [2, 3, 4, 5, 6, 7, 8];
 
 const formatWeekDay = (thu) => {
