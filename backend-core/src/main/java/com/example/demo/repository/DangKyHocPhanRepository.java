@@ -156,4 +156,52 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
             GROUP BY d.sinhVien.idSinhVien
             """)
     List<Object[]> sumHocPhiDangKyGroupedBySinhVien();
+
+    /**
+     * Task 19 – Cố vấn: SV thuộc ngành của {@code idKhoa}, tổng tín chỉ môn rớt (điểm công bố dưới 1.0) ≥ {@code minFailedCredits}.
+     */
+    @Query("""
+            SELECT sv.idSinhVien, sv.maSinhVien, sv.hoTen, l.maLop, l.tenLop,
+                   SUM(hp.soTinChi), COUNT(d)
+            FROM DangKyHocPhan d
+            JOIN d.sinhVien sv
+            JOIN sv.lop l
+            JOIN l.nganhDaoTao n
+            JOIN n.khoa k
+            JOIN d.lopHocPhan lhp
+            JOIN lhp.hocPhan hp
+            JOIN d.bangDiemMon bdm
+            WHERE d.trangThaiDangKy = 'THANH_CONG'
+              AND k.idKhoa = :idKhoa
+              AND hp.soTinChi IS NOT NULL
+              AND (bdm.trangThai IS NULL OR bdm.trangThai = 'DA_CONG_BO')
+              AND bdm.diemHe4 IS NOT NULL
+              AND bdm.diemHe4 < 1.0
+            GROUP BY sv.idSinhVien, sv.maSinhVien, sv.hoTen, l.maLop, l.tenLop
+            HAVING SUM(hp.soTinChi) >= :minFailedCredits
+            ORDER BY SUM(hp.soTinChi) DESC
+            """)
+    List<Object[]> findStudentsWithFailedCreditsAboveThreshold(
+            @Param("idKhoa") Long idKhoa,
+            @Param("minFailedCredits") int minFailedCredits);
+
+    /**
+     * GPA tích lũy (điểm hệ 4 đã công bố) — bổ sung cho danh sách Task 19.
+     */
+    @Query("""
+            SELECT d.sinhVien.idSinhVien,
+                   SUM(bdm.diemHe4 * hp.soTinChi),
+                   SUM(hp.soTinChi)
+            FROM DangKyHocPhan d
+            JOIN d.lopHocPhan lhp
+            JOIN lhp.hocPhan hp
+            JOIN d.bangDiemMon bdm
+            WHERE d.trangThaiDangKy = 'THANH_CONG'
+              AND hp.soTinChi IS NOT NULL
+              AND bdm.diemHe4 IS NOT NULL
+              AND (bdm.trangThai IS NULL OR bdm.trangThai = 'DA_CONG_BO')
+              AND d.sinhVien.idSinhVien IN :svIds
+            GROUP BY d.sinhVien.idSinhVien
+            """)
+    List<Object[]> findCumulativeGpaFactorsBySinhVienIds(@Param("svIds") Collection<Long> svIds);
 }
