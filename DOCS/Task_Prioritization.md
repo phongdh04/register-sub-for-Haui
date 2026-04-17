@@ -31,7 +31,7 @@
 | 16 | Quản lý Lớp Giảng dạy & Điểm danh | TEACHER | **🟠 P1-High** | ✅ **Done** | API `/api/v1/lecturer/attendance/*` (lớp phụ trách, buổi điểm danh, PATCH dòng); bảng `Buoi_Diem_Danh`, `Diem_Danh_Dang_Ky`; SV `POST /api/v1/attendance/me/check-in`; UI `QunLLpGingDyimDanh.jsx`; seed `GV_SEED` ↔ `gv01`. |
 | 17 | Mạng lưới Nhập & Quản Lý Điểm | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET/PATCH/POST /api/v1/lecturer/grades/...` (nháp `CHO_CONG_BO` → công bố `DA_CONG_BO`); GPA/transcript & tiên quyết chỉ tính điểm đã công bố; UI `MngLiNhpQunLimGradingSystem.jsx`. |
 | 18 | Gác thi & Xử lý Khiếu nại (Phúc khảo) | TEACHER | **🟢 P3-Low** | ⬜ Todo | Quy trình nghiệp vụ lắt nhắt của riêng Giảng viên, nhường chỗ cho code lõi Queue. |
-| 19 | Cánh Tay Phải "Cố Vấn Học Tập" | TEACHER | **🟡 P2-Medium** | ⬜ Todo | Bộ lọc sinh viên nợ > 12 tín chỉ rớt đài. Cần thiết nhưng không gấp. |
+| 19 | Cánh Tay Phải "Cố Vấn Học Tập" | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET /api/v1/lecturer/advisory/at-risk?minFailTc=` — SV cùng khoa GV có tổng TC môn rớt (điểm hệ 4 &lt; 1.0, đã công bố) &gt; ngưỡng; UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`. |
 | 20 | **Đăng nhập truyền thống & Quản lý Phiên** | ALL | **🔴 P0-Blocker** | ✅ Done | Cánh cửa bảo vệ. Không có JWT & Login (Spring Security) thì mọi API đều tịt ngòi 401. |
 | 21 | **Hệ thống Phân Quyền Đa Tầng (RBAC)** | ADMIN | **🔴 P0-Blocker** | ✅ Done | Role Spring chặn API (Proxy Pattern). Tách Admin, Student, Teacher. |
 | 22 | Xác thực Đa Yếu Tố (MFA / 2FA) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Gửi Email mã OTP bảo mật Login. Chỉ để buff thêm điểm. |
@@ -63,3 +63,4 @@
 - [x] Task 5 - Giỏ trước giờ G: `GioHangDangKy` + `GioHangDangKyRepository` + `IPreRegistrationCartService/PreRegistrationCartServiceImpl` + `PreRegistrationCartController` + `TkbSlotConflictUtils` (dùng chung xung đột TKB) + UI `TnhNngTrcGiGPreRegistrationGiLp.jsx`
 - [x] Task 11 - Lịch thi & đánh giá GV: `LichThi` + `PhieuDuThi` + `DanhGiaGiangVien` + `ExamScheduleController` + `LecturerRatingController` + services + `HocKyRepository.findTopByOrderByIdHocKyDesc` + `DataSeeder` demo + UI `LchThinhGiGv.jsx`
 - [x] Task 14 - Giám sát tài chính Admin: `IAdminFinanceService/AdminFinanceServiceImpl` + `AdminFinanceController` + queries `GiaoDichThanhToan`/`GiaoDichVi`/`DangKyHocPhan`/`ViSinhVien` + UI `GimStTiChnhKTonAdmin.jsx`
+- [x] Task 19 - Cố vấn học tập: `BangDiemMonRepository.findStudentsWithFailedCreditsAboveThreshold` + `ILecturerAdvisoryService/LecturerAdvisoryServiceImpl` + `LecturerAdvisoryController` + UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`
