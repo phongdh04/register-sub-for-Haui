@@ -15,5 +15,8 @@ public class TranscriptLineResponse {
     private Integer soTinChi;
     private BigDecimal diemHe4;
     private String diemChu;
+    /** Có điểm hệ 4 và đã công bố chính thức (tính GPA / tín chỉ có điểm). */
     private boolean daCoDiem;
+    /** false = điểm nháp (CHO_CONG_BO), vẫn có thể hiển thị điểm tạm. */
+    private boolean congBoChinhThuc;
 }

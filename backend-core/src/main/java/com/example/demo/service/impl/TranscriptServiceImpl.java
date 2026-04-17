@@ -69,7 +69,8 @@ public class TranscriptServiceImpl implements ITranscriptService {
                 if (tc != null) {
                     tinDangKy += tc;
                 }
-                boolean coDiem = bdm != null && bdm.getDiemHe4() != null;
+                boolean congBo = isBangDiemCongBoChinhThuc(bdm);
+                boolean coDiem = bdm != null && bdm.getDiemHe4() != null && congBo;
                 if (coDiem && tc != null) {
                     tinCoDiem += tc;
                 }
@@ -82,6 +83,7 @@ public class TranscriptServiceImpl implements ITranscriptService {
                         .diemHe4(bdm != null ? bdm.getDiemHe4() : null)
                         .diemChu(bdm != null ? bdm.getDiemChu() : null)
                         .daCoDiem(coDiem)
+                        .congBoChinhThuc(congBo && bdm != null && bdm.getDiemHe4() != null)
                         .build());
             }
 
@@ -106,7 +108,8 @@ public class TranscriptServiceImpl implements ITranscriptService {
         for (DangKyHocPhan d : rows) {
             HocPhan hp = d.getLopHocPhan().getHocPhan();
             BangDiemMon bdm = d.getBangDiemMon();
-            if (bdm != null && bdm.getDiemHe4() != null && hp != null && hp.getSoTinChi() != null) {
+            if (bdm != null && bdm.getDiemHe4() != null && isBangDiemCongBoChinhThuc(bdm)
+                    && hp != null && hp.getSoTinChi() != null) {
                 tongTinChiCoDiem += hp.getSoTinChi();
             }
         }
@@ -133,7 +136,7 @@ public class TranscriptServiceImpl implements ITranscriptService {
                 continue;
             }
             BangDiemMon bdm = d.getBangDiemMon();
-            if (bdm == null || bdm.getDiemHe4() == null) {
+            if (bdm == null || bdm.getDiemHe4() == null || !isBangDiemCongBoChinhThuc(bdm)) {
                 continue;
             }
             sum = sum.add(bdm.getDiemHe4().multiply(BigDecimal.valueOf(hp.getSoTinChi())));
@@ -150,5 +153,16 @@ public class TranscriptServiceImpl implements ITranscriptService {
             return null;
         }
         return "HK" + hk.getKyThu() + " - " + hk.getNamHoc();
+    }
+
+    /**
+     * Điểm tính vào GPA / tiên quyết: null hoặc DA_CONG_BO (tương thích dữ liệu cũ trước Task 17).
+     */
+    private boolean isBangDiemCongBoChinhThuc(BangDiemMon bdm) {
+        if (bdm == null) {
+            return false;
+        }
+        String t = bdm.getTrangThai();
+        return t == null || "DA_CONG_BO".equals(t);
     }
 }

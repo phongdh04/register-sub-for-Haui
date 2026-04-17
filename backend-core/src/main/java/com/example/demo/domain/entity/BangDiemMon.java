@@ -39,7 +39,8 @@ public class BangDiemMon {
     private String diemChu;
 
     /**
-     * CHO_CONG_BO | DA_CONG_BO
+     * CHO_CONG_BO (nháp / chờ duyệt) | DA_CONG_BO (đã công bố, tính GPA & điều kiện tiên quyết).
+     * Bản ghi cũ có thể null → coi như đã công bố (tương thích Task 4).
      */
     @Column(name = "trang_thai", length = 20)
     @Builder.Default
