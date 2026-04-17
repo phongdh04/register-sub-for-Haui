@@ -35,7 +35,7 @@
 | 20 | **Đăng nhập truyền thống & Quản lý Phiên** | ALL | **🔴 P0-Blocker** | ✅ Done | Cánh cửa bảo vệ. Không có JWT & Login (Spring Security) thì mọi API đều tịt ngòi 401. |
 | 21 | **Hệ thống Phân Quyền Đa Tầng (RBAC)** | ADMIN | **🔴 P0-Blocker** | ✅ Done | Role Spring chặn API (Proxy Pattern). Tách Admin, Student, Teacher. |
 | 22 | Xác thực Đa Yếu Tố (MFA / 2FA) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Gửi Email mã OTP bảo mật Login. Chỉ để buff thêm điểm. |
-| 23 | Lịch sử Nhật Ký Dấu Chân (Audit Trails) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Bắt sự kiện System log ai click vào sửa điểm. Có thể tóm lược bỏ qua. |
+| 23 | Lịch sử Nhật Ký Dấu Chân (Audit Trails) | ADMIN | **🟢 P3-Low** | ✅ **Done** | Bảng `Nhat_Ky_Hanh_Dong`; ghi `GRADING_*` + `RETAKE_*` từ `GradingServiceImpl`/`RetakeAppealServiceImpl`; API `GET /api/v1/admin/audit-logs`; UI `LchSNhtKDuChnAuditTrailsLogging.jsx`. |
 
 ---
 ## Lộ trình triển khai khuyến nghị (Execution Flow)
@@ -66,3 +66,4 @@
 - [x] Task 15 - Analytics Admin: `IAdminAnalyticsService/AdminAnalyticsServiceImpl` + `AdminAnalyticsController` + queries tổng hợp `DangKy`/`SinhVien`/`GiaoDichThanhToan`/`LopHocPhan` + UI `BoCoPhnTchAnalytics.jsx`
 - [x] Task 19 - Cố vấn học tập: `ILecturerAdvisoryService/LecturerAdvisoryServiceImpl` + `LecturerAdvisoryController` + `DangKyHocPhanRepository` (at-risk + GPA) + UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`
 - [x] Task 18 - Phúc khảo: `YeuCauPhucKhao` + `IRetakeAppealService/RetakeAppealServiceImpl` + `RetakeAppealController` + `LecturerRetakeAppealController` + UI `GcThiXLKhiuNiPhcKho.jsx` + nộp yêu cầu từ `KimTraTinHcTpTranscriptDashboard.jsx`
+- [x] Task 23 - Audit trail: `NhatKyHanhDong` + `IAuditTrailService/AuditTrailServiceImpl` + `AdminAuditTrailController` + hook điểm/phúc khảo + UI `LchSNhtKDuChnAuditTrailsLogging.jsx`

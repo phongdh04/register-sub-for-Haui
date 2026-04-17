@@ -19,6 +19,7 @@ import com.example.demo.repository.LichThiRepository;
 import com.example.demo.repository.SinhVienRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.YeuCauPhucKhaoRepository;
+import com.example.demo.service.IAuditTrailService;
 import com.example.demo.service.IRetakeAppealService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,7 @@ public class RetakeAppealServiceImpl implements IRetakeAppealService {
     private final YeuCauPhucKhaoRepository yeuCauPhucKhaoRepository;
     private final BangDiemMonRepository bangDiemMonRepository;
     private final LichThiRepository lichThiRepository;
+    private final IAuditTrailService auditTrailService;
 
     @Override
     @Transactional
@@ -84,6 +86,13 @@ public class RetakeAppealServiceImpl implements IRetakeAppealService {
                 .ngayTao(LocalDateTime.now())
                 .build();
         y = yeuCauPhucKhaoRepository.save(y);
+
+        auditTrailService.record(studentUsername, "STUDENT", "RETAKE_SUBMIT",
+                "SV nộp yêu cầu phúc khảo đăng ký " + dk.getIdDangKy(),
+                Map.of(
+                        "idYeuCau", y.getIdYeuCau(),
+                        "idDangKy", dk.getIdDangKy(),
+                        "idLopHp", dk.getLopHocPhan().getIdLopHp()));
 
         Map<Long, LichThi> lich = loadLichByLopIds(List.of(dk.getLopHocPhan().getIdLopHp()));
         return toRow(y, lich);
@@ -135,6 +144,12 @@ public class RetakeAppealServiceImpl implements IRetakeAppealService {
             y.setGhiChuGiangVien(trimToNull(request.getGhiChuGiangVien()));
             y.setNgayXuLy(LocalDateTime.now());
             yeuCauPhucKhaoRepository.save(y);
+            auditTrailService.record(lecturerUsername, "LECTURER", "RETAKE_REJECT",
+                    "GV từ chối phúc khảo #" + idYeuCau,
+                    Map.of(
+                            "idYeuCau", idYeuCau,
+                            "idDangKy", dk.getIdDangKy(),
+                            "idLopHp", dk.getLopHocPhan().getIdLopHp()));
         } else if (TT_DONG_Y.equals(qd)) {
             BigDecimal diem = request.getDiemSauPhucKhao();
             if (diem == null) {
@@ -156,6 +171,13 @@ public class RetakeAppealServiceImpl implements IRetakeAppealService {
             y.setGhiChuGiangVien(trimToNull(request.getGhiChuGiangVien()));
             y.setNgayXuLy(LocalDateTime.now());
             yeuCauPhucKhaoRepository.save(y);
+            auditTrailService.record(lecturerUsername, "LECTURER", "RETAKE_APPROVE",
+                    "GV đồng ý phúc khảo, cập nhật điểm đăng ký " + dk.getIdDangKy(),
+                    Map.of(
+                            "idYeuCau", idYeuCau,
+                            "idDangKy", dk.getIdDangKy(),
+                            "idLopHp", dk.getLopHocPhan().getIdLopHp(),
+                            "diemSauPhucKhao", diem));
         } else {
             throw new IllegalArgumentException("Quyết định không hợp lệ.");
         }

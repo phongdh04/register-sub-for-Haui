@@ -13,6 +13,7 @@ import com.example.demo.repository.DangKyHocPhanRepository;
 import com.example.demo.repository.GiangVienRepository;
 import com.example.demo.repository.LopHocPhanRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.IAuditTrailService;
 import com.example.demo.service.IGradingService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -35,6 +37,7 @@ public class GradingServiceImpl implements IGradingService {
     private final LopHocPhanRepository lopHocPhanRepository;
     private final DangKyHocPhanRepository dangKyHocPhanRepository;
     private final BangDiemMonRepository bangDiemMonRepository;
+    private final IAuditTrailService auditTrailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -90,6 +93,13 @@ public class GradingServiceImpl implements IGradingService {
         }
         bdm = bangDiemMonRepository.save(bdm);
         dk.setBangDiemMon(bdm);
+        auditTrailService.record(username, "LECTURER", "GRADING_DRAFT_SAVE",
+                "Lưu nháp điểm đăng ký " + idDangKy,
+                Map.of(
+                        "idDangKy", idDangKy,
+                        "idLopHp", dk.getLopHocPhan().getIdLopHp(),
+                        "maLopHp", dk.getLopHocPhan().getMaLopHp(),
+                        "diemHe4", diem));
         return toGradeRow(dk);
     }
 
@@ -109,6 +119,13 @@ public class GradingServiceImpl implements IGradingService {
         bdm.setTrangThai("DA_CONG_BO");
         bangDiemMonRepository.save(bdm);
         dk.setBangDiemMon(bdm);
+        auditTrailService.record(username, "LECTURER", "GRADING_PUBLISH",
+                "Công bố điểm đăng ký " + idDangKy,
+                Map.of(
+                        "idDangKy", idDangKy,
+                        "idLopHp", dk.getLopHocPhan().getIdLopHp(),
+                        "maLopHp", dk.getLopHocPhan().getMaLopHp(),
+                        "diemHe4", bdm.getDiemHe4()));
         return toGradeRow(dk);
     }
 
