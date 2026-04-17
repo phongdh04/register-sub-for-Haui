@@ -1,211 +1,284 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const fmt = (v) => (v != null && v !== '' ? String(v) : '—');
+
+const nienKhoa = (nam) => {
+  if (nam == null || nam === '') return '—';
+  const n = Number(nam);
+  if (!Number.isFinite(n)) return '—';
+  return `${n} - ${n + 4}`;
+};
+
+const trangThaiThuTuc = (code) => {
+  switch (code) {
+    case 'HOAN_THANH':
+      return { label: 'Hoàn thành', cls: 'bg-emerald-100 text-emerald-900' };
+    case 'CHO_BO_SUNG':
+      return { label: 'Chờ bổ sung', cls: 'bg-amber-100 text-amber-900' };
+    case 'KHONG_AP_DUNG':
+      return { label: 'Không áp dụng', cls: 'bg-slate-100 text-slate-600' };
+    default:
+      return { label: code || '—', cls: 'bg-slate-100 text-slate-700' };
+  }
+};
 
 const TraCuHSCNhnThTcOnline = () => {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [sdt, setSdt] = useState('');
+  const [diaChi, setDiaChi] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+
+  const load = useCallback(async () => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      setError('Vui lòng đăng nhập tài khoản sinh viên.');
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSaveMsg('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/student-profile/me`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Không tải được hồ sơ.');
+      setProfile(body);
+      setEmail(body.email || '');
+      setSdt(body.sdt || '');
+      setDiaChi(body.diaChi || '');
+    } catch (e) {
+      setError(e.message || 'Lỗi tải dữ liệu.');
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const saveContact = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
+    if (!email.trim() && !sdt.trim() && !diaChi.trim()) {
+      setError('Nhập ít nhất một trường (email, SĐT hoặc địa chỉ) trước khi lưu.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSaveMsg('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/student-profile/me/contact`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email.trim() || undefined,
+          sdt: sdt.trim() || undefined,
+          diaChi: diaChi.trim() || undefined
+        })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Không lưu được.');
+      setProfile(body);
+      setSaveMsg('Đã cập nhật liên hệ.');
+    } catch (err) {
+      setError(err.message || 'Lỗi lưu.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <>
-      
-{/*  SideNavBar  */}
+    <main className="min-h-screen bg-surface px-6 pb-12">
+      <div className="max-w-5xl mx-auto pt-8 space-y-8">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-on-surface tracking-tight">Hồ sơ cá nhân</h1>
+            <p className="text-on-surface-variant text-sm mt-2 max-w-xl">
+              Task 2 — <code className="text-xs bg-surface-container-high px-1 rounded">GET /api/v1/student-profile/me</code>
+              , <code className="text-xs bg-surface-container-high px-1 rounded">PATCH .../me/contact</code>
+              . Thủ tục trực tuyến (minh họa) kèm theo phản hồi API.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            className="px-5 py-2.5 rounded-full border border-primary text-primary font-semibold text-sm hover:bg-primary/10 disabled:opacity-50"
+          >
+            {loading ? 'Đang tải…' : 'Làm mới'}
+          </button>
+        </header>
 
-{/*  Main Content  */}
-<main className=" min-h-screen">
-{/*  TopAppBar  */}
+        {error && (
+          <div className="rounded-xl border border-error/30 bg-error-container/30 p-4 text-sm text-error">
+            {error}
+          </div>
+        )}
+        {saveMsg && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            {saveMsg}
+          </div>
+        )}
 
-<div className="p-10 space-y-10">
-{/*  Page Header  */}
-<section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-<div className="space-y-2">
-<h2 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">Hồ Sơ Cá Nhân</h2>
-<p className="text-on-surface-variant font-medium max-w-lg">Quản lý thông tin học thuật và hồ sơ định danh chính thức của bạn tại EduPort.</p>
-</div>
-<div className="flex gap-3">
-<button className="px-6 py-2.5 rounded-full bg-white text-primary border border-outline-variant/50 font-semibold text-sm hover:bg-surface-container-low transition-all shadow-sm">
-                        Xuất file PDF
-                    </button>
-<button className="px-6 py-2.5 rounded-full bg-gradient-to-br from-primary to-primary-container text-white font-semibold text-sm hover:shadow-lg transition-all flex items-center gap-2">
-<span className="material-symbols-outlined text-lg">edit</span>
-                        Cập nhật hồ sơ
-                    </button>
-</div>
-</section>
-{/*  Bento Grid Layout  */}
-<div className="grid grid-cols-12 gap-6">
-{/*  General Info Card (Large)  */}
-<div className="col-span-12 lg:col-span-8 rounded-xl bg-surface-container-lowest p-8 shadow-sm transition-all hover:shadow-md border border-outline-variant/10">
-<div className="flex flex-col md:flex-row gap-10">
-<div className="relative flex-shrink-0">
-<div className="w-40 h-52 rounded-2xl overflow-hidden bg-slate-100 border-4 border-white shadow-xl">
-<img className="w-full h-full object-cover" data-alt="professional studio portrait of a young man for academic identification, neutral gray background, clean lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsyV0c1jB2RlR7e8UFt4sihzObZnZNJR23cnh9wovZl5VjOGhD0TOmegVcoc7R9u7qqvnA2sLO3_h3-GY70g0rYhDOOoHUigy9TM8U1iQsnCK7Wvkt2RHnEQfx3EnZ9iybm4RxP3KlxtkVJmlEZNwuileZA6Jhaz_A89ISk8grp__QVUfl4RLtr69cTkUYSxxApOmSwI7oXmS68Dz-5_aKpJ5iObteY9kEmN-3-nINLaoWENIQjwYrWKqjGQPp1-ssYofz77d7cZ85"/>
-</div>
-<div className="absolute -bottom-3 -right-3 bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
-                                Đang học
-                            </div>
-</div>
-<div className="flex-grow space-y-6">
-<div>
-<h3 className="text-2xl font-headline font-bold text-on-surface">Nguyễn Văn A</h3>
-<p className="text-primary font-semibold tracking-wide">MSSV: 21110123</p>
-</div>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Lớp sinh hoạt</p>
-<p className="text-sm font-medium text-on-surface">21CNTT1A</p>
-</div>
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Khoa / Viện</p>
-<p className="text-sm font-medium text-on-surface">Công nghệ thông tin</p>
-</div>
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Chuyên ngành</p>
-<p className="text-sm font-medium text-on-surface">Kỹ thuật phần mềm</p>
-</div>
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Niên khóa</p>
-<p className="text-sm font-medium text-on-surface">2021 - 2025</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-{/*  Advisor Info (Small)  */}
-<div className="col-span-12 lg:col-span-4 rounded-xl bg-primary-container p-8 text-white relative overflow-hidden shadow-sm">
-<div className="relative z-10 space-y-6">
-<div className="flex items-center gap-3">
-<div className="p-2 bg-white/20 rounded-lg backdrop-blur-md">
-<span className="material-symbols-outlined">supervisor_account</span>
-</div>
-<h4 className="font-headline font-bold text-lg">Cố vấn học tập</h4>
-</div>
-<div className="space-y-4">
-<div>
-<p className="text-blue-200 text-xs font-medium uppercase tracking-wider mb-1">Giảng viên hướng dẫn</p>
-<p className="text-xl font-bold">ThS. Lê Thị B</p>
-</div>
-<div className="flex items-center gap-2">
-<span className="material-symbols-outlined text-blue-200 text-sm">call</span>
-<p className="text-sm font-medium text-blue-50">090x xxx xxx</p>
-</div>
-<button className="w-full py-2 bg-white/10 hover:bg-white/20 transition-colors rounded-lg text-xs font-bold uppercase tracking-widest">
-                                Liên hệ cố vấn
-                            </button>
-</div>
-</div>
-{/*  Decorative background element  */}
-<div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-</div>
-{/*  Contact Info (Editable)  */}
-<div className="col-span-12 md:col-span-6 lg:col-span-5 rounded-xl bg-surface-container-low p-8 border border-outline-variant/10">
-<div className="flex justify-between items-center mb-8">
-<h4 className="font-headline font-bold text-xl flex items-center gap-2">
-<span className="material-symbols-outlined text-primary">contact_mail</span>
-                            Liên lạc
-                        </h4>
-<button className="p-2 rounded-full hover:bg-primary/5 text-primary transition-colors">
-<span className="material-symbols-outlined">edit_square</span>
-</button>
-</div>
-<div className="space-y-6">
-<div className="flex gap-4">
-<div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary-container flex-shrink-0 shadow-sm">
-<span className="material-symbols-outlined text-lg">mail</span>
-</div>
-<div>
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Email sinh viên</p>
-<p className="text-sm font-medium text-on-surface">21110123@student.eduport.edu.vn</p>
-</div>
-</div>
-<div className="flex gap-4">
-<div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary-container flex-shrink-0 shadow-sm">
-<span className="material-symbols-outlined text-lg">smartphone</span>
-</div>
-<div>
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Số điện thoại</p>
-<p className="text-sm font-medium text-on-surface">038x xxx xxx</p>
-</div>
-</div>
-<div className="flex gap-4">
-<div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary-container flex-shrink-0 shadow-sm">
-<span className="material-symbols-outlined text-lg">location_on</span>
-</div>
-<div>
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Địa chỉ thường trú</p>
-<p className="text-sm font-medium text-on-surface leading-relaxed">123 Đường ABC, Phường 1, Quận 1, TP. Hồ Chí Minh</p>
-</div>
-</div>
-</div>
-</div>
-{/*  Personal Details (Table-like grid)  */}
-<div className="col-span-12 md:col-span-6 lg:col-span-7 rounded-xl bg-surface-container-lowest p-8 border border-outline-variant/10 shadow-sm">
-<h4 className="font-headline font-bold text-xl flex items-center gap-2 mb-8">
-<span className="material-symbols-outlined text-primary">fingerprint</span>
-                        Chi tiết cá nhân
-                    </h4>
-<div className="grid grid-cols-2 gap-x-8 gap-y-10">
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Ngày sinh</p>
-<p className="text-sm font-semibold text-on-surface pb-2 border-b border-outline-variant/20">15 / 05 / 2003</p>
-</div>
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Giới tính</p>
-<p className="text-sm font-semibold text-on-surface pb-2 border-b border-outline-variant/20">Nam</p>
-</div>
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Số CMND / CCCD</p>
-<p className="text-sm font-semibold text-on-surface pb-2 border-b border-outline-variant/20">079xxxxxxxxx</p>
-</div>
-<div className="space-y-1">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Dân tộc</p>
-<p className="text-sm font-semibold text-on-surface pb-2 border-b border-outline-variant/20">Kinh</p>
-</div>
-<div className="col-span-2 space-y-1 bg-surface-container-low/50 p-4 rounded-xl">
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tài khoản ngân hàng liên kết</p>
-<div className="flex justify-between items-center mt-2">
-<div className="flex items-center gap-3">
-<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-<span className="material-symbols-outlined text-primary text-sm">account_balance</span>
-</div>
-<p className="text-sm font-semibold text-on-surface">VCB - 1023xxxx99</p>
-</div>
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold rounded-full uppercase tracking-tighter">Đã xác thực</span>
-</div>
-</div>
-</div>
-</div>
-{/*  Academic Progress (Bonus Section for context)  */}
-<div className="col-span-12 rounded-xl glass-card border border-outline-variant/20 p-8 flex flex-col md:flex-row gap-8 items-center justify-between">
-<div className="space-y-2">
-<p className="text-xs font-bold text-primary uppercase tracking-widest">Tiến độ học tập</p>
-<h5 className="text-xl font-headline font-bold">Bạn đã hoàn thành 75% chương trình đào tạo</h5>
-<div className="w-full md:w-96 h-2 bg-surface-container-high rounded-full overflow-hidden mt-4">
-<div className="w-3/4 h-full bg-gradient-to-r from-primary to-secondary-container"></div>
-</div>
-</div>
-<div className="flex gap-4">
-<div className="text-center px-6">
-<p className="text-2xl font-black text-on-surface">3.82</p>
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">GPA Hiện tại</p>
-</div>
-<div className="w-px h-12 bg-outline-variant/30 hidden md:block"></div>
-<div className="text-center px-6">
-<p className="text-2xl font-black text-on-surface">112</p>
-<p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tín chỉ tích lũy</p>
-</div>
-</div>
-</div>
-</div>
-{/*  Footer Area  */}
-<footer className="pt-12 pb-6 border-t border-outline-variant/10 text-center">
-<p className="text-xs text-on-surface-variant/60 font-medium">© 2024 EduPort University Management System. Thông tin được bảo mật theo tiêu chuẩn ISO 27001.</p>
-</footer>
-</div>
-</main>
-{/*  Floating Action Button for Support  */}
-<div className="fixed bottom-8 right-8 z-50">
-<button className="w-14 h-14 rounded-full bg-secondary shadow-2xl flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all">
-<span className="material-symbols-outlined" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>support_agent</span>
-</button>
-</div>
+        {loading && <p className="text-sm text-on-surface-variant">Đang tải hồ sơ…</p>}
 
-    </>
+        {!loading && profile && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section className="lg:col-span-2 rounded-xl bg-surface-container-lowest p-6 shadow-sm border border-outline-variant/20 space-y-4">
+              <h2 className="text-xl font-bold text-on-surface">{profile.hoTen}</h2>
+              <p className="text-primary font-semibold text-sm">MSSV: {profile.maSinhVien}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Lớp sinh hoạt</p>
+                  <p className="font-medium">{fmt(profile.tenLop)} ({fmt(profile.maLop)})</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Khoa / Viện</p>
+                  <p className="font-medium">{fmt(profile.tenKhoa)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Chuyên ngành</p>
+                  <p className="font-medium">{fmt(profile.tenNganh)}</p>
+                  <p className="text-xs text-on-surface-variant">{fmt(profile.heDaoTao)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Niên khóa (ước tính)</p>
+                  <p className="font-medium">{nienKhoa(profile.namNhapHoc)}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl bg-[#00288e] p-6 text-white shadow-sm space-y-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <span className="material-symbols-outlined shrink-0">supervisor_account</span>
+                Cố vấn học tập
+              </h3>
+              {profile.tenCoVan ? (
+                <>
+                  <p className="text-lg font-bold">{profile.tenCoVan}</p>
+                  <p className="text-sm text-white/80">{fmt(profile.emailCoVan)}</p>
+                  <p className="text-sm text-white/80">{fmt(profile.sdtCoVan)}</p>
+                </>
+              ) : (
+                <p className="text-sm text-white/70">Chưa gán cố vấn trong dữ liệu.</p>
+              )}
+            </section>
+
+            <section className="lg:col-span-2 rounded-xl bg-surface-container-low p-6 border border-outline-variant/20">
+              <h3 className="font-bold text-lg mb-4">Liên hệ (cập nhật được)</h3>
+              <form onSubmit={saveContact} className="space-y-4 max-w-lg">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1" htmlFor="em">Email</label>
+                  <input
+                    id="em"
+                    type="text"
+                    className="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1" htmlFor="phone">Số điện thoại</label>
+                  <input
+                    id="phone"
+                    type="text"
+                    className="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm"
+                    value={sdt}
+                    onChange={(e) => setSdt(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1" htmlFor="addr">Địa chỉ</label>
+                  <textarea
+                    id="addr"
+                    rows={2}
+                    className="w-full rounded-lg border border-outline-variant/30 px-3 py-2 text-sm"
+                    value={diaChi}
+                    onChange={(e) => setDiaChi(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2 rounded-full bg-primary text-on-primary font-semibold text-sm disabled:opacity-50"
+                >
+                  {saving ? 'Đang lưu…' : 'Lưu liên hệ'}
+                </button>
+              </form>
+            </section>
+
+            <section className="rounded-xl bg-surface-container-lowest p-6 border border-outline-variant/20">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">fingerprint</span>
+                Chi tiết (đọc)
+              </h3>
+              <dl className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex justify-between gap-2 border-b border-outline-variant/10 pb-2">
+                  <dt className="text-on-surface-variant">Ngày sinh</dt>
+                  <dd className="font-medium">{fmt(profile.ngaySinh)}</dd>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-outline-variant/10 pb-2">
+                  <dt className="text-on-surface-variant">Giới tính</dt>
+                  <dd className="font-medium">{fmt(profile.gioiTinh)}</dd>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-outline-variant/10 pb-2">
+                  <dt className="text-on-surface-variant">CCCD</dt>
+                  <dd className="font-medium">{fmt(profile.soCccd)}</dd>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-outline-variant/10 pb-2">
+                  <dt className="text-on-surface-variant">BHYT</dt>
+                  <dd className="font-medium">{fmt(profile.maTheBhyt)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-on-surface-variant">TK ngân hàng</dt>
+                  <dd className="font-medium text-right">
+                    {fmt(profile.tenNganHang)} {profile.soTkNganHang ? `· …${String(profile.soTkNganHang).slice(-4)}` : ''}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="lg:col-span-3 rounded-xl bg-surface-container-lowest p-6 border border-outline-variant/20">
+              <h3 className="font-bold text-lg mb-4">Thủ tục trực tuyến (minh họa)</h3>
+              <ul className="space-y-3">
+                {(profile.thuTucTrucTuyen || []).map((t) => {
+                  const st = trangThaiThuTuc(t.trangThai);
+                  return (
+                    <li
+                      key={t.ma}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-outline-variant/15 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-semibold text-on-surface">{t.ten}</p>
+                        {t.ghiChu && <p className="text-xs text-on-surface-variant mt-1">{t.ghiChu}</p>}
+                      </div>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full self-start ${st.cls}`}>
+                        {st.label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          </div>
+        )}
+      </div>
+    </main>
   );
 };
 
