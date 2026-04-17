@@ -21,7 +21,7 @@
 | 6 | Lọc Môn Đỉnh Cao (Tìm kiếm môn học) | STUDENT | **🟠 P1-High** | ✅ **Done** | JPA Specification (Builder Pattern) dynamic query: keyword + idHocKy + soTinChi + loaiMon + chiConCho. Page + Sort. API: GET /api/v1/courses. |
 | 7 | Thuật Toán Logic Đóng Chốt (Validation Rules) | STUDENT | **🟠 P1-High** | ✅ **Done** | Chain of Responsibility: DuplicateRegistration → ScheduleConflict → PrerequisiteCourse + Kafka Consumer cầu nối Go→Java. |
 | 8 | Ví Sinh Viên (Student Wallet) | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng ví nội bộ làm sau khi xong cổng thanh toán chính thức API. |
-| 9 | Thanh Toán QR Code (Open API VNPay/MoMo) | STUDENT | **🟠 P1-High** | ⬜ Todo | Chốt công nợ nhanh. Thỏa mãn Pattern Adapter cho Hội đồng chấm điểm. |
+| 9 | Thanh Toán QR Code (Open API VNPay/MoMo) | STUDENT | **🟠 P1-High** | ✅ **Done** | API `POST /api/v1/payments/tuition-qr` + Adapter MOCK/VNPay/MoMo stub + bảng `Giao_Dich_Thanh_Toan`; UI `ThanhTonQrCodeOpenApi.jsx` tạo QR/liên kết. |
 | 10 | Dịch vụ Thời Khóa Biểu thông minh | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/timetable/me` lấy dữ liệu thật từ đăng ký học phần + `thoi_khoa_bieu_json`, render UI realtime theo JWT Student. |
 | 11 | Lịch Thi & Đánh Giá Giảng Viên | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Modules Râu ria (Đánh giá chỉ là Form lưu Database). |
 | 12 | **Setup Cấu Hình Giờ Vàng (Queue / Kafka / Redis)**| ADMIN | **🔴 P0-Blocker** | ✅ **Done** | **🔥 TRÁI TIM DỰ ÁN GOLANG**. Triển khai: Cooldown → DistributedLock → Lua DECR Slot → Kafka Publish. |
@@ -54,3 +54,4 @@
 - [x] Task 7 - Kafka Consumer + Chain of Responsibility Validation (DuplicateRegistration → ScheduleConflict → PrerequisiteCourse) + DangKyHocPhanServiceImpl + SinhVienRepository
 - [x] Task 6 - Tìm kiếm môn học: CourseSearchRequest + CourseSearchSpecification (JPA Specification Builder Pattern) + ICourseSearchService + CourseSearchServiceImpl + CourseSearchController (GET /api/v1/courses)
 - [x] Task 10 - Dịch vụ Thời khóa biểu: `TimetableController` + `ITimetableService/TimetableServiceImpl` + DTO `TimetableResponse` + frontend `DchVThiKhaBiuThngMinh.jsx` gọi API `GET /api/v1/timetable/me`
+- [x] Task 9 - Thanh toán QR: `PaymentController` + `IPaymentService/PaymentServiceImpl` + `PaymentGatewayAdapter` (MOCK/VNPay/MoMo) + `GiaoDichThanhToan` + UI `ThanhTonQrCodeOpenApi.jsx`
