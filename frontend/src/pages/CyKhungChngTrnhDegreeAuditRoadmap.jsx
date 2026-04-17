@@ -1,6 +1,78 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const prettyKhoi = (khoi) => {
+  switch (khoi) {
+    case 'DAI_CUONG':
+      return 'I. Khối Kiến Thức Đại Cương';
+    case 'CO_SO_NGANH':
+      return 'II. Khối Kiến Thức Cơ Sở Ngành';
+    case 'CHUYEN_NGANH':
+      return 'III. Khối Kiến Thức Chuyên Ngành';
+    case 'TU_CHON':
+      return 'IV. Học phần Tự chọn';
+    default:
+      return khoi || 'Khối kiến thức';
+  }
+};
+
+const chipLoaiMon = (batBuoc) =>
+  batBuoc
+    ? 'px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase'
+    : 'px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase';
 
 const CyKhungChngTrnhDegreeAuditRoadmap = () => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const load = async () => {
+      const token = localStorage.getItem('jwt_token');
+      if (!token) {
+        setError('Bạn chưa đăng nhập. Vui lòng đăng nhập để xem khung chương trình.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/degree-audit/me`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.message || 'Không tải được dữ liệu khung chương trình.');
+        }
+
+        const payload = await response.json();
+        setData(payload);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError(err.message || 'Có lỗi xảy ra.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+    return () => controller.abort();
+  }, []);
+
+  const khois = useMemo(() => data?.khois || [], [data]);
+
   return (
     <>
       
@@ -9,7 +81,7 @@ const CyKhungChngTrnhDegreeAuditRoadmap = () => {
 {/*  TopAppBar (Authority: JSON)  */}
 
 {/*  Main Content Canvas  */}
-<main className="  pb-12 px-12 max-w-7xl">
+<main className="pb-12 px-12 max-w-7xl">
 {/*  Header Section: Editorial Style  */}
 <section className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-8">
 <div className="max-w-2xl">
@@ -18,15 +90,15 @@ const CyKhungChngTrnhDegreeAuditRoadmap = () => {
 <div className="flex flex-wrap gap-4 items-center">
 <div className="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full text-primary font-semibold text-sm">
 <span className="material-symbols-outlined text-sm" data-icon="school">school</span>
-                        Khoa Khoa học Máy tính
+                        {data?.tenKhoa || 'Khoa'}
                     </div>
 <div className="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full text-primary font-semibold text-sm">
 <span className="material-symbols-outlined text-sm" data-icon="verified">verified</span>
-                        Chính quy
+                        {data?.heDaoTao || 'Hệ đào tạo'}
                     </div>
 <div className="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full text-primary font-semibold text-sm">
 <span className="material-symbols-outlined text-sm" data-icon="computer">computer</span>
-                        Ngành Công nghệ Thông tin
+                        {data?.tenNganh || 'Ngành đào tạo'}
                     </div>
 </div>
 </div>
@@ -45,7 +117,7 @@ const CyKhungChngTrnhDegreeAuditRoadmap = () => {
                         Mục tiêu đào tạo
                     </h3>
 <p className="text-on-surface-variant leading-relaxed font-body">
-                        Chương trình nhằm đào tạo Kỹ sư Công nghệ Thông tin có phẩm chất chính trị, đạo đức và sức khỏe tốt; nắm vững các kiến thức cơ bản về toán học, khoa học tự nhiên và kiến thức chuyên môn vững chắc về lĩnh vực CNTT; có khả năng nghiên cứu, thiết kế, phát triển và quản lý các hệ thống phần mềm, mạng máy tính và an toàn thông tin đáp ứng nhu cầu thị trường lao động toàn cầu.
+                        {loading ? 'Đang tải...' : (data?.mucTieu || 'Chưa có mục tiêu chương trình.')}
                     </p>
 </div>
 <div className="absolute -bottom-8 -right-8 opacity-5">
@@ -57,16 +129,16 @@ const CyKhungChngTrnhDegreeAuditRoadmap = () => {
 <div className="bg-primary-container text-on-primary p-6 rounded-xl flex items-center justify-between shadow-lg shadow-primary/10">
 <div>
 <p className="text-on-primary-container text-xs font-bold uppercase tracking-wider mb-1">Thời gian học</p>
-<h4 className="text-3xl font-extrabold tracking-tight">4 Năm</h4>
-<p className="text-xs mt-1 opacity-80">8 Học kỳ chính</p>
+<h4 className="text-3xl font-extrabold tracking-tight">{data?.thoiGianGiangDay || '—'}</h4>
+<p className="text-xs mt-1 opacity-80">{data?.namApDung ? `Áp dụng từ ${data.namApDung}` : '—'}</p>
 </div>
 <span className="material-symbols-outlined text-4xl opacity-50" data-icon="history_edu">history_edu</span>
 </div>
 <div className="bg-secondary-container text-on-secondary-container p-6 rounded-xl flex items-center justify-between">
 <div>
 <p className="text-on-secondary-fixed-variant text-xs font-bold uppercase tracking-wider mb-1">Tổng tín chỉ</p>
-<h4 className="text-3xl font-extrabold tracking-tight">142 TC</h4>
-<p className="text-xs mt-1 opacity-80">Toàn khóa học</p>
+<h4 className="text-3xl font-extrabold tracking-tight">{data?.tongSoTinChiToanKhoa ?? '—'} TC</h4>
+<p className="text-xs mt-1 opacity-80">{data?.tongTinChiDaHoanThanh != null ? `Đã hoàn thành ${data.tongTinChiDaHoanThanh} TC` : '—'}</p>
 </div>
 <span className="material-symbols-outlined text-4xl opacity-50" data-icon="auto_awesome">auto_awesome</span>
 </div>
@@ -74,170 +146,63 @@ const CyKhungChngTrnhDegreeAuditRoadmap = () => {
 </section>
 {/*  Curriculum Table Section  */}
 <section className="space-y-12">
-{/*  Category: Đại cương  */}
-<div className="space-y-6">
-<div className="flex items-center gap-4">
-<h3 className="text-2xl font-extrabold text-primary tracking-tight">I. Khối Kiến Thức Đại Cương</h3>
-<div className="h-px flex-1 bg-surface-container-high"></div>
-<span className="text-xs font-bold text-outline uppercase tracking-widest">32 Tín chỉ</span>
-</div>
-<div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
-<table className="w-full border-collapse text-sm">
-<thead className="bg-surface-container-low text-on-surface-variant font-bold">
-<tr>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Mã HP</th>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Tên môn học</th>
-<th className="text-center py-4 px-6 uppercase tracking-wider text-[11px]">Tín chỉ</th>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Loại môn</th>
-<th className="text-right py-4 px-6 uppercase tracking-wider text-[11px]">Hành động</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-surface-container">
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">MAT1011</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Giải tích 1</td>
-<td className="py-4 px-6 text-center">3</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">Bắt buộc</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-<tr className="bg-surface-container-low/30 hover:bg-surface-container-low transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">PHS1002</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Vật lý đại cương 1</td>
-<td className="py-4 px-6 text-center">4</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">Bắt buộc</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">ENG1050</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Anh văn cơ sở 1</td>
-<td className="py-4 px-6 text-center">3</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase">Tự chọn</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-{/*  Category: Cơ sở ngành  */}
-<div className="space-y-6">
-<div className="flex items-center gap-4">
-<h3 className="text-2xl font-extrabold text-primary tracking-tight">II. Khối Kiến Thức Cơ Sở Ngành</h3>
-<div className="h-px flex-1 bg-surface-container-high"></div>
-<span className="text-xs font-bold text-outline uppercase tracking-widest">48 Tín chỉ</span>
-</div>
-<div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
-<table className="w-full border-collapse text-sm">
-<thead className="bg-surface-container-low text-on-surface-variant font-bold">
-<tr>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Mã HP</th>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Tên môn học</th>
-<th className="text-center py-4 px-6 uppercase tracking-wider text-[11px]">Tín chỉ</th>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Loại môn</th>
-<th className="text-right py-4 px-6 uppercase tracking-wider text-[11px]">Hành động</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-surface-container">
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">COS2001</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Cấu trúc dữ liệu và Giải thuật</td>
-<td className="py-4 px-6 text-center">4</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">Bắt buộc</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-<tr className="bg-surface-container-low/30 hover:bg-surface-container-low transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">COS2005</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Lập trình hướng đối tượng</td>
-<td className="py-4 px-6 text-center">4</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">Bắt buộc</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-<tr className="hover:bg-surface-container-low transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">COS2010</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Hệ điều hành</td>
-<td className="py-4 px-6 text-center">4</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">Bắt buộc</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-{/*  Category: Chuyên ngành (Glassmorphism highlight)  */}
-<div className="space-y-6 relative">
-<div className="flex items-center gap-4">
-<h3 className="text-2xl font-extrabold text-primary tracking-tight">III. Khối Kiến Thức Chuyên Ngành</h3>
-<div className="h-px flex-1 bg-surface-container-high"></div>
-<span className="text-xs font-bold text-outline uppercase tracking-widest">62 Tín chỉ</span>
-</div>
-<div className="glass-panel border border-white/20 rounded-xl overflow-hidden shadow-xl shadow-primary/5">
-<div className="p-6 bg-gradient-to-r from-primary/5 to-transparent flex items-center justify-between border-b border-surface-container">
-<div className="flex items-center gap-3">
-<span className="material-symbols-outlined text-primary" data-icon="stars">stars</span>
-<span className="font-bold text-primary">Định hướng: Kỹ thuật Phần mềm</span>
-</div>
-<button className="text-xs font-bold text-primary hover:underline uppercase tracking-tight">Thay đổi định hướng</button>
-</div>
-<table className="w-full border-collapse text-sm">
-<thead className="bg-surface-container-low text-on-surface-variant font-bold">
-<tr>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Mã HP</th>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Tên môn học</th>
-<th className="text-center py-4 px-6 uppercase tracking-wider text-[11px]">Tín chỉ</th>
-<th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Loại môn</th>
-<th className="text-right py-4 px-6 uppercase tracking-wider text-[11px]">Hành động</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-surface-container">
-<tr className="hover:bg-primary/5 transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">SWE3010</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Công nghệ phần mềm nâng cao</td>
-<td className="py-4 px-6 text-center">4</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">Bắt buộc</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-<tr className="hover:bg-primary/5 transition-colors group">
-<td className="py-4 px-6 font-mono font-medium text-primary">SWE3025</td>
-<td className="py-4 px-6 font-semibold text-on-surface">Thiết kế mẫu phần mềm (Design Patterns)</td>
-<td className="py-4 px-6 text-center">4</td>
-<td className="py-4 px-6">
-<span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase">Tự chọn</span>
-</td>
-<td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-<button className="text-primary"><span className="material-symbols-outlined text-lg" data-icon="info">info</span></button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+{loading && (
+  <div className="bg-surface-container-lowest rounded-xl p-6 text-sm font-medium text-on-surface-variant">
+    Đang tải dữ liệu khung chương trình...
+  </div>
+)}
+{!loading && error && (
+  <div className="bg-error-container/40 border border-error/30 rounded-xl p-6 text-sm font-medium text-error">
+    {error}
+  </div>
+)}
+{!loading && !error && khois.map((khoi) => (
+  <div className="space-y-6" key={khoi.khoiKienThuc}>
+    <div className="flex items-center gap-4">
+      <h3 className="text-2xl font-extrabold text-primary tracking-tight">{prettyKhoi(khoi.khoiKienThuc)}</h3>
+      <div className="h-px flex-1 bg-surface-container-high"></div>
+      <span className="text-xs font-bold text-outline uppercase tracking-widest">
+        {khoi.tinChiDaHoanThanh}/{khoi.tongTinChi} TC
+      </span>
+    </div>
+    <div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+      <table className="w-full border-collapse text-sm">
+        <thead className="bg-surface-container-low text-on-surface-variant font-bold">
+          <tr>
+            <th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Mã HP</th>
+            <th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Tên môn học</th>
+            <th className="text-center py-4 px-6 uppercase tracking-wider text-[11px]">Tín chỉ</th>
+            <th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Loại môn</th>
+            <th className="text-left py-4 px-6 uppercase tracking-wider text-[11px]">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-surface-container">
+          {(khoi.hocPhans || []).map((hp) => (
+            <tr className="hover:bg-surface-container-low transition-colors group" key={hp.maHocPhan}>
+              <td className="py-4 px-6 font-mono font-medium text-primary">{hp.maHocPhan}</td>
+              <td className="py-4 px-6 font-semibold text-on-surface">{hp.tenHocPhan}</td>
+              <td className="py-4 px-6 text-center">{hp.soTinChi ?? '-'}</td>
+              <td className="py-4 px-6">
+                <span className={chipLoaiMon(hp.batBuoc)}>{hp.batBuoc ? 'Bắt buộc' : 'Tự chọn'}</span>
+              </td>
+              <td className="py-4 px-6">
+                {hp.daHoanThanh ? (
+                  <span className="px-2.5 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold uppercase">
+                    Đã hoàn thành
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 bg-surface-container text-on-surface-variant rounded-full text-[10px] font-bold uppercase">
+                    Chưa đạt
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+))}
 </section>
 {/*  Footer Note  */}
 <footer className=" pt-8 border-t border-surface-container text-center">
