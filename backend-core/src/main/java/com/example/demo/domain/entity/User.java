@@ -32,6 +32,14 @@ public class User {
     @Column(name = "trang_thai", length = 20)
     private Status status;
 
+    /** Email nhận mã OTP khi bật MFA (Task 22). */
+    @Column(name = "email_otp", length = 255)
+    private String email;
+
+    @Column(name = "mfa_bat", nullable = false)
+    @Builder.Default
+    private boolean mfaEnabled = false;
+
     // Callbacks to ensure default values align with DB constraints (Liskov concept prep if subclassed)
     @PrePersist
     public void prePersist() {

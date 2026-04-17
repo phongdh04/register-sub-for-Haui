@@ -56,8 +56,10 @@ public class DataSeeder implements CommandLineRunner {
                     .password(passwordEncoder.encode("123456"))
                     .role(Role.ADMIN)
                     .status(Status.ACTIVE)
+                    .email("admin@eduport.demo")
+                    .mfaEnabled(false)
                     .build());
-            log.info("Seeded Admin account: admin / 123456");
+            log.info("Seeded Admin account: admin / 123456 (email MFA mặc định, MFA tắt)");
         }
 
         // 2. Seed Lecturer (Giảng viên)
@@ -148,5 +150,13 @@ public class DataSeeder implements CommandLineRunner {
                         log.info("Seeded demo Lich_Thi + Phieu_Du_Thi for sv01 / lop {}", lhp.getMaLopHp());
                     }
                 }));
+
+        userRepository.findByUsername("admin").ifPresent(admin -> {
+            if (admin.getEmail() == null || admin.getEmail().isBlank()) {
+                admin.setEmail("admin@eduport.demo");
+                userRepository.save(admin);
+                log.info("Cập nhật email mặc định cho admin: admin@eduport.demo (Task 22 MFA)");
+            }
+        });
     }
 }

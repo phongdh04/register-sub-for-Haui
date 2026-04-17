@@ -1,12 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const NgNhpTruynThngQunLPhin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [mfaStep, setMfaStep] = useState(false);
+  const [challengeId, setChallengeId] = useState('');
+  const [emailMasked, setEmailMasked] = useState('');
+  const [mfaHint, setMfaHint] = useState('');
+  const [otp, setOtp] = useState('');
   const navigate = useNavigate();
+
+  const persistSessionAndRedirect = (data) => {
+    localStorage.setItem('jwt_token', data.token);
+    localStorage.setItem('user_roles', JSON.stringify(data.roles));
+    localStorage.setItem('username', data.username);
+    if (data.roles.includes('ROLE_ADMIN')) {
+      navigate('/admin');
+    } else if (data.roles.includes('ROLE_LECTURER')) {
+      navigate('/teacher');
+    } else {
+      navigate('/student');
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -14,7 +34,7 @@ const NgNhpTruynThngQunLPhin = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -22,20 +42,17 @@ const NgNhpTruynThngQunLPhin = () => {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // Lưu thông tin JWT Authentication
-        localStorage.setItem('jwt_token', data.token);
-        localStorage.setItem('user_roles', JSON.stringify(data.roles));
-        localStorage.setItem('username', data.username);
+      if (response.ok && data.requiresMfa && data.challengeId) {
+        setChallengeId(data.challengeId);
+        setEmailMasked(data.emailMasked || '');
+        setMfaHint(data.hint || '');
+        setMfaStep(true);
+        setOtp('');
+        return;
+      }
 
-        // Chuyển hướng theo Role (RBAC Redirect)
-        if (data.roles.includes('ROLE_ADMIN')) {
-          navigate('/admin');
-        } else if (data.roles.includes('ROLE_LECTURER')) {
-          navigate('/teacher');
-        } else {
-          navigate('/student');
-        }
+      if (response.ok && data.token) {
+        persistSessionAndRedirect(data);
       } else {
         setErrorMsg('Sai Tên đăng nhập hoặc Mật khẩu!');
       }
@@ -45,6 +62,38 @@ const NgNhpTruynThngQunLPhin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/mfa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId, otp: otp.replace(/\D/g, '').slice(0, 6) })
+      });
+      const data = await response.json();
+      if (response.ok && data.token) {
+        persistSessionAndRedirect(data);
+      } else {
+        const msg = data.message || data.detail || 'Mã OTP không đúng hoặc đã hết hạn.';
+        setErrorMsg(typeof msg === 'string' ? msg : 'Mã OTP không hợp lệ.');
+      }
+    } catch (err) {
+      setErrorMsg('Lỗi kết nối đến Server. Vui lòng thử lại!');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelMfa = () => {
+    setMfaStep(false);
+    setChallengeId('');
+    setOtp('');
+    setErrorMsg('');
   };
 
   return (
@@ -100,19 +149,51 @@ const NgNhpTruynThngQunLPhin = () => {
 <p className="text-on-surface-variant font-medium text-sm mt-1">Academic Portal</p>
 </div>
 <div className="mb-10 text-center md:text-left">
-<h2 className="font-headline text-3xl font-bold text-on-surface mb-3">Chào mừng bạn trở lại</h2>
-<p className="text-on-surface-variant text-sm font-medium">Vui lòng nhập thông tin tài khoản của bạn để tiếp tục.</p>
+<h2 className="font-headline text-3xl font-bold text-on-surface mb-3">
+  {mfaStep ? 'Xác thực hai bước (Admin)' : 'Chào mừng bạn trở lại'}
+</h2>
+<p className="text-on-surface-variant text-sm font-medium">
+  {mfaStep
+    ? `Nhập mã 6 số đã gửi tới ${emailMasked || 'email đã cấu hình'}. ${mfaHint || ''}`
+    : 'Vui lòng nhập thông tin tài khoản của bạn để tiếp tục.'}
+</p>
 </div>
 {/*  Form Section  */}
-<form className="space-y-6" onSubmit={handleLogin}>
-{/*  Error Message  */}
+{mfaStep ? (
+<form className="space-y-6" onSubmit={handleMfaVerify}>
 {errorMsg && (
   <div className="p-4 rounded-xl bg-error/10 border border-error/20 text-error font-medium flex items-center gap-3">
     <span className="material-symbols-outlined">error</span>
     {errorMsg}
   </div>
 )}
-{/*  MSSV Input  */}
+<div className="space-y-2">
+<label className="text-label-md font-bold text-on-surface-variant tracking-wider uppercase ml-1" htmlFor="otp">Mã OTP (6 số)</label>
+<div className="relative group">
+<div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+<span className="material-symbols-outlined text-xl">pin</span>
+</div>
+<input className="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-medium tracking-widest text-center text-2xl" id="otp" placeholder="000000" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+       value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required />
+</div>
+</div>
+<div className="space-y-4 pt-4 flex flex-col gap-3">
+<button type="submit" disabled={loading || otp.length !== 6} className="w-full py-4 rounded-full btn-gradient text-white font-headline font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-75 disabled:scale-100 flex justify-center items-center gap-2">
+  {loading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : 'Xác nhận OTP'}
+</button>
+<button type="button" onClick={cancelMfa} className="w-full py-3 rounded-full border border-outline-variant text-on-surface font-semibold hover:bg-surface-container-high transition-all">
+  Quay lại đăng nhập
+</button>
+</div>
+</form>
+) : (
+<form className="space-y-6" onSubmit={handleLogin}>
+{errorMsg && (
+  <div className="p-4 rounded-xl bg-error/10 border border-error/20 text-error font-medium flex items-center gap-3">
+    <span className="material-symbols-outlined">error</span>
+    {errorMsg}
+  </div>
+)}
 <div className="space-y-2">
 <label className="text-label-md font-bold text-on-surface-variant tracking-wider uppercase ml-1" htmlFor="mssv">Tài Khoản (MSSV / Mã GV)</label>
 <div className="relative group">
@@ -123,7 +204,6 @@ const NgNhpTruynThngQunLPhin = () => {
        value={username} onChange={(e) => setUsername(e.target.value)} required />
 </div>
 </div>
-{/*  Password Input  */}
 <div className="space-y-2">
 <div className="flex justify-between items-end ml-1">
 <label className="text-label-md font-bold text-on-surface-variant tracking-wider uppercase" htmlFor="password">Mật khẩu</label>
@@ -140,7 +220,6 @@ const NgNhpTruynThngQunLPhin = () => {
 </button>
 </div>
 </div>
-{/*  Action Buttons  */}
 <div className="space-y-4 pt-4">
 <button type="submit" disabled={loading} className="w-full py-4 rounded-full btn-gradient text-white font-headline font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-75 disabled:scale-100 flex justify-center items-center gap-2">
                             {loading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : 'Đăng nhập'}
@@ -150,12 +229,13 @@ const NgNhpTruynThngQunLPhin = () => {
 <span className="flex-shrink mx-4 text-label-sm font-bold text-outline uppercase tracking-widest">Hoặc</span>
 <div className="flex-grow border-t border-surface-container-highest"></div>
 </div>
-<button className="w-full py-4 flex items-center justify-center gap-3 rounded-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-headline font-semibold hover:bg-surface-container-high transition-all duration-200">
+<button type="button" className="w-full py-4 flex items-center justify-center gap-3 rounded-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-headline font-semibold hover:bg-surface-container-high transition-all duration-200">
 <img alt="Email Icon" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBObjQ55-B9umijUU6d6Uy98tjMeMUDs5dOGaovLrF5k0ncCREUCpRGklRl7p_7UzNldWY3bBeCOmsNjdQ24YtAZTueB0V9I0g-CUDgOdW2fldzD6iIa9CNk2IQxFyf-q5UXNA3_szDvLyyewVA8lza_RmqaDWaIcQyATIFsrCDr0a147rryV2K9wQqFCc0rC3YZWKu339mFhd34WAUBrcGkPiViw6Kk9W8SHnjIetJm4mJbpzcwJZWc5PWi_SUhfoa6BGNelWfyo4d"/>
                         Đăng nhập bằng Email Trường
                         </button>
 </div>
 </form>
+)}
 {/*  Footer Links  */}
 <footer className="mt-12 text-center">
 <p className="text-on-surface-variant text-sm font-medium">

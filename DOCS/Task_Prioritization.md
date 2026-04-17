@@ -34,7 +34,7 @@
 | 19 | Cánh Tay Phải "Cố Vấn Học Tập" | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET /api/v1/lecturer/advisory/at-risk?minFailedCredits=12` (SV cùng khoa GV, tổng TC môn rớt điểm công bố dưới 1.0); UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`. |
 | 20 | **Đăng nhập truyền thống & Quản lý Phiên** | ALL | **🔴 P0-Blocker** | ✅ Done | Cánh cửa bảo vệ. Không có JWT & Login (Spring Security) thì mọi API đều tịt ngòi 401. |
 | 21 | **Hệ thống Phân Quyền Đa Tầng (RBAC)** | ADMIN | **🔴 P0-Blocker** | ✅ Done | Role Spring chặn API (Proxy Pattern). Tách Admin, Student, Teacher. |
-| 22 | Xác thực Đa Yếu Tố (MFA / 2FA) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Gửi Email mã OTP bảo mật Login. Chỉ để buff thêm điểm. |
+| 22 | Xác thực Đa Yếu Tố (MFA / 2FA) | ADMIN | **🟢 P3-Low** | ✅ **Done** | Bảng `mfa_otp_challenge` + cột `email_otp`/`mfa_bat` trên `tai_khoan`; login admin bật MFA → OTP (log demo / SMTP sau); `POST /api/auth/mfa/verify`; `GET/PUT /api/v1/admin/mfa/*`; UI `ngNhpTruynThngQunLPhin.jsx` + `XcThcaYuTMfa2FaVChKS.jsx`. |
 | 23 | Lịch sử Nhật Ký Dấu Chân (Audit Trails) | ADMIN | **🟢 P3-Low** | ✅ **Done** | Bảng `Nhat_Ky_Hanh_Dong`; ghi `GRADING_*` + `RETAKE_*` từ `GradingServiceImpl`/`RetakeAppealServiceImpl`; API `GET /api/v1/admin/audit-logs`; UI `LchSNhtKDuChnAuditTrailsLogging.jsx`. |
 
 ---
@@ -67,3 +67,4 @@
 - [x] Task 19 - Cố vấn học tập: `ILecturerAdvisoryService/LecturerAdvisoryServiceImpl` + `LecturerAdvisoryController` + `DangKyHocPhanRepository` (at-risk + GPA) + UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`
 - [x] Task 18 - Phúc khảo: `YeuCauPhucKhao` + `IRetakeAppealService/RetakeAppealServiceImpl` + `RetakeAppealController` + `LecturerRetakeAppealController` + UI `GcThiXLKhiuNiPhcKho.jsx` + nộp yêu cầu từ `KimTraTinHcTpTranscriptDashboard.jsx`
 - [x] Task 23 - Audit trail: `NhatKyHanhDong` + `IAuditTrailService/AuditTrailServiceImpl` + `AdminAuditTrailController` + hook điểm/phúc khảo + UI `LchSNhtKDuChnAuditTrailsLogging.jsx`
+- [x] Task 22 - MFA Admin (email OTP): `MfaOtpChallenge` + `IMfaOtpService/MfaOtpServiceImpl` + `MfaOtpDelivery` (log demo) + `AuthController` (login + `mfa/verify`) + `AdminMfaController` + `User.email`/`mfaEnabled` + UI đăng nhập OTP + `XcThcaYuTMfa2FaVChKS.jsx`
