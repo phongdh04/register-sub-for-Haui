@@ -9,5 +9,8 @@ import java.util.Optional;
 @Repository
 public interface HocKyRepository extends JpaRepository<HocKy, Long> {
     Optional<HocKy> findByTrangThaiHienHanhTrue();
+
+    Optional<HocKy> findTopByOrderByIdHocKyDesc();
+
     boolean existsByNamHocAndKyThu(String namHoc, Integer kyThu);
 }

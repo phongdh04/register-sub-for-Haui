@@ -23,7 +23,7 @@
 | 8 | Ví Sinh Viên (Student Wallet) | STUDENT | **🟡 P2-Medium** | ✅ **Done** | Bảng `Vi_Sinh_Vien`, `Giao_Dich_Vi`; API `GET /api/v1/wallet/me`; nạp qua `POST /api/v1/payments/{id}/confirm-mock` (ghi có idempotent); ước tính nợ học phí từ đăng ký; UI `VSinhVinStudentWallet.jsx` + nút xác nhận MOCK trên `ThanhTonQrCodeOpenApi.jsx`. |
 | 9 | Thanh Toán QR Code (Open API VNPay/MoMo) | STUDENT | **🟠 P1-High** | ✅ **Done** | API `POST /api/v1/payments/tuition-qr` + Adapter MOCK/VNPay/MoMo stub + bảng `Giao_Dich_Thanh_Toan`; UI `ThanhTonQrCodeOpenApi.jsx` tạo QR/liên kết. |
 | 10 | Dịch vụ Thời Khóa Biểu thông minh | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/timetable/me` lấy dữ liệu thật từ đăng ký học phần + `thoi_khoa_bieu_json`, render UI realtime theo JWT Student. |
-| 11 | Lịch Thi & Đánh Giá Giảng Viên | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Modules Râu ria (Đánh giá chỉ là Form lưu Database). |
+| 11 | Lịch Thi & Đánh Giá Giảng Viên | STUDENT | **🟡 P2-Medium** | ✅ **Done** | Bảng `Lich_Thi`, `Phieu_Du_Thi`, `Danh_Gia_Giang_Vien`; API `GET /api/v1/exams/me`, `GET/POST /api/v1/lecturer-ratings`; seed demo lịch/SBD khi có đăng ký sv01; UI `LchThinhGiGv.jsx`. |
 | 12 | **Setup Cấu Hình Giờ Vàng (Queue / Kafka / Redis)**| ADMIN | **🔴 P0-Blocker** | ✅ **Done** | **🔥 TRÁI TIM DỰ ÁN GOLANG**. Triển khai: Cooldown → DistributedLock → Lua DECR Slot → Kafka Publish. |
 | 13 | Quản Lý Danh Mục Khung & Mở Lớp | ADMIN | **🔴 P0-Blocker** | ✅ **Done** | Admin phải bơm Data môn học Data Master vào CSDL thì SV mới đăng ký được. |
 | 14 | Giám Sát Tài Chính (Kế Toán Admin) | ADMIN | **🟡 P2-Medium** | ⬜ Todo | Dashboard Kế toán. View sau khi Payment Gateaway chạy nuột. |
@@ -60,3 +60,4 @@
 - [x] Task 2 - Hồ sơ SV: `findWithProfileByTaiKhoanId` + `IStudentProfileService/StudentProfileServiceImpl` + `StudentProfileController` + UI `TraCuHSCNhnThTcOnline.jsx`
 - [x] Task 16 - Điểm danh GV: `BuoiDiemDanh` + `DiemDanhDangKy` + `IAttendanceService/AttendanceServiceImpl` + `LecturerAttendanceController` + `StudentAttendanceController` + UI `QunLLpGingDyimDanh.jsx` + `DataSeeder` (GV_SEED)
 - [x] Task 17 - Nhập điểm GV: `BangDiemMonRepository` + `IGradingService/GradingServiceImpl` + `LecturerGradingController` + `findGradebookRowsForLop` + transcript filter công bố + UI `MngLiNhpQunLimGradingSystem.jsx`
+- [x] Task 11 - Lịch thi & đánh giá GV: `LichThi` + `PhieuDuThi` + `DanhGiaGiangVien` + `ExamScheduleController` + `LecturerRatingController` + services + `HocKyRepository.findTopByOrderByIdHocKyDesc` + `DataSeeder` demo + UI `LchThinhGiGv.jsx`

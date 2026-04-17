@@ -1,18 +1,31 @@
 package com.example.demo.component;
 
+import com.example.demo.domain.entity.DangKyHocPhan;
 import com.example.demo.domain.entity.GiangVien;
 import com.example.demo.domain.entity.Khoa;
+import com.example.demo.domain.entity.LichThi;
+import com.example.demo.domain.entity.LopHocPhan;
+import com.example.demo.domain.entity.PhieuDuThi;
+import com.example.demo.domain.entity.SinhVien;
 import com.example.demo.domain.entity.User;
 import com.example.demo.domain.enums.Role;
 import com.example.demo.domain.enums.Status;
+import com.example.demo.repository.DangKyHocPhanRepository;
 import com.example.demo.repository.GiangVienRepository;
+import com.example.demo.repository.HocKyRepository;
 import com.example.demo.repository.KhoaRepository;
+import com.example.demo.repository.LichThiRepository;
+import com.example.demo.repository.PhieuDuThiRepository;
+import com.example.demo.repository.SinhVienRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Data Seeder - Tự động tạo các tài khoản test khi Spring Boot khởi động.
@@ -25,6 +38,11 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final KhoaRepository khoaRepository;
     private final GiangVienRepository giangVienRepository;
+    private final SinhVienRepository sinhVienRepository;
+    private final HocKyRepository hocKyRepository;
+    private final DangKyHocPhanRepository dangKyHocPhanRepository;
+    private final LichThiRepository lichThiRepository;
+    private final PhieuDuThiRepository phieuDuThiRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -88,6 +106,47 @@ public class DataSeeder implements CommandLineRunner {
             ).ifPresent(gv -> log.info("Seeded GiangVien {} linked to gv01", gv.getMaGiangVien()));
         }
 
+        seedExamScheduleDemoIfEmpty();
+
         log.info("Database seeding completed.");
+    }
+
+    /**
+     * Task 11: nếu DB đã có đăng ký của sv01 nhưng chưa có lịch thi, tạo một dòng demo (Lich_Thi + Phieu_Du_Thi).
+     */
+    private void seedExamScheduleDemoIfEmpty() {
+        if (lichThiRepository.count() > 0) {
+            return;
+        }
+        userRepository.findByUsername("sv01").flatMap(u -> sinhVienRepository.findByTaiKhoan_Id(u.getId()))
+                .ifPresent(sv -> hocKyRepository.findTopByOrderByIdHocKyDesc().ifPresent(hk -> {
+                    List<DangKyHocPhan> dks = dangKyHocPhanRepository.findRegisteredCoursesInSemester(
+                            sv.getIdSinhVien(), hk.getIdHocKy());
+                    if (dks.isEmpty()) {
+                        return;
+                    }
+                    DangKyHocPhan dk = dks.get(0);
+                    LopHocPhan lhp = dk.getLopHocPhan();
+                    if (lichThiRepository.findByLopHocPhan_IdLopHp(lhp.getIdLopHp()).isPresent()) {
+                        return;
+                    }
+                    LichThi lt = lichThiRepository.save(LichThi.builder()
+                            .lopHocPhan(lhp)
+                            .lanThi(1)
+                            .ngayThi(LocalDate.now().plusWeeks(2))
+                            .caThi("Ca 1")
+                            .gioBatDau("07:30")
+                            .phongThi("Phòng 101 (demo seed)")
+                            .build());
+                    if (phieuDuThiRepository.findByDangKy_IdDangKy(dk.getIdDangKy()).isEmpty()) {
+                        phieuDuThiRepository.save(PhieuDuThi.builder()
+                                .lichThi(lt)
+                                .dangKy(dk)
+                                .soBaoDanh("DEMO-" + sv.getMaSinhVien())
+                                .trangThaiDuThi("DUOC_THI")
+                                .build());
+                        log.info("Seeded demo Lich_Thi + Phieu_Du_Thi for sv01 / lop {}", lhp.getMaLopHp());
+                    }
+                }));
     }
 }
