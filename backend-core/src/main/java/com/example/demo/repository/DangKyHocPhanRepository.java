@@ -130,6 +130,19 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
     Optional<DangKyHocPhan> findWithLopAndGiangVienForGrade(@Param("idDangKy") Long idDangKy);
 
     @Query("""
+            SELECT d FROM DangKyHocPhan d
+            JOIN FETCH d.sinhVien sv
+            JOIN FETCH sv.lop l
+            JOIN FETCH d.lopHocPhan lhp
+            JOIN FETCH lhp.hocPhan hp
+            JOIN FETCH lhp.giangVien gv
+            JOIN FETCH d.hocKy hk
+            LEFT JOIN FETCH d.bangDiemMon bdm
+            WHERE d.idDangKy = :idDangKy
+            """)
+    Optional<DangKyHocPhan> findWithFullAppealContext(@Param("idDangKy") Long idDangKy);
+
+    @Query("""
             SELECT COALESCE(SUM(lhp.hocPhi), 0) FROM DangKyHocPhan d
             JOIN d.lopHocPhan lhp
             WHERE d.sinhVien.idSinhVien = :svId
