@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -127,4 +128,13 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
             WHERE d.idDangKy = :idDangKy
             """)
     Optional<DangKyHocPhan> findWithLopAndGiangVienForGrade(@Param("idDangKy") Long idDangKy);
+
+    @Query("""
+            SELECT COALESCE(SUM(lhp.hocPhi), 0) FROM DangKyHocPhan d
+            JOIN d.lopHocPhan lhp
+            WHERE d.sinhVien.idSinhVien = :svId
+              AND d.trangThaiDangKy IN ('THANH_CONG', 'CHO_DUYET')
+              AND lhp.hocPhi IS NOT NULL
+            """)
+    BigDecimal sumHocPhiDangKyBySinhVien(@Param("svId") Long svId);
 }

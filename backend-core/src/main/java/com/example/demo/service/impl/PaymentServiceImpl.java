@@ -11,6 +11,7 @@ import com.example.demo.repository.GiaoDichThanhToanRepository;
 import com.example.demo.repository.SinhVienRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.IPaymentService;
+import com.example.demo.service.IWalletService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class PaymentServiceImpl implements IPaymentService {
     private final UserRepository userRepository;
     private final SinhVienRepository sinhVienRepository;
     private final GiaoDichThanhToanRepository giaoDichThanhToanRepository;
+    private final IWalletService walletService;
     private final List<PaymentGatewayAdapter> paymentGatewayAdapters;
 
     @Override
@@ -76,6 +78,36 @@ public class PaymentServiceImpl implements IPaymentService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giao dịch."));
 
         return toResponse(gd, null);
+    }
+
+    @Override
+    @Transactional
+    public PaymentQrResponse confirmMockPayment(String username, Long idGiaoDich) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài khoản: " + username));
+
+        SinhVien sinhVien = sinhVienRepository.findByTaiKhoan_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
+
+        GiaoDichThanhToan gd = giaoDichThanhToanRepository.findByIdAndSinhVien_IdSinhVien(idGiaoDich, sinhVien.getIdSinhVien())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giao dịch."));
+
+        if ("THANH_CONG".equals(gd.getTrangThai())) {
+            return toResponse(gd, "Giao dịch đã hoàn tất trước đó.");
+        }
+        if (!"CHO_THANH_TOAN".equals(gd.getTrangThai())) {
+            throw new IllegalArgumentException("Trạng thái giao dịch không cho phép xác nhận.");
+        }
+        if (!"MOCK".equalsIgnoreCase(gd.getProvider())) {
+            throw new IllegalArgumentException("Chỉ giao dịch MOCK mới xác nhận được qua API demo này.");
+        }
+
+        gd.setTrangThai("THANH_CONG");
+        gd = giaoDichThanhToanRepository.save(gd);
+
+        walletService.applyCreditForSuccessfulPayment(gd);
+
+        return toResponse(gd, "Đã xác nhận MOCK — số tiền đã ghi có vào ví.");
     }
 
     private PaymentGatewayAdapter resolveAdapter(String provider) {

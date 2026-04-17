@@ -37,4 +37,12 @@ public class PaymentController {
             @PathVariable Long id) {
         return ResponseEntity.ok(paymentService.getMyPayment(authentication.getName(), id));
     }
+
+    @PostMapping("/{id}/confirm-mock")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<PaymentQrResponse> confirmMock(
+            Authentication authentication,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(paymentService.confirmMockPayment(authentication.getName(), id));
+    }
 }
