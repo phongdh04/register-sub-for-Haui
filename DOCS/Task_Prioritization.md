@@ -14,7 +14,7 @@
 | STT | Tên Task (Module Hệ Thống) | Role Đối Tượng | Mức Độ Ưu Tiên | Trạng thái | Lý Do Phân Loại (Kiến Trúc) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | Khởi tạo Đầu não (Dashboard Sinh viên) | STUDENT | **🔴 P0-Blocker** | ✅ Done (UI) | Cổng vào bắt buộc. Không có mặt tiền thì không test được click button đi đâu. |
-| 2 | Tra cứu Hồ sơ Cá nhân & Thủ tục online | STUDENT | **🟡 P2-Medium** | ⬜ Todo | Chỉ hiển thị info tĩnh, làm sau khi xong đăng ký môn. |
+| 2 | Tra cứu Hồ sơ Cá nhân & Thủ tục online | STUDENT | **🟡 P2-Medium** | ✅ **Done** | API `GET /api/v1/student-profile/me` + `PATCH .../me/contact` (email/SĐT/địa chỉ); join `SinhVien`↔`HoSoSinhVien`↔`Lop`↔`Nganh`↔`Khoa`↔`CoVan`; thủ tục demo trong response; UI `TraCuHSCNhnThTcOnline.jsx`. |
 | 3 | Cây Khung Chương Trình (Degree Audit) | STUDENT | **🟠 P1-High** | ✅ **Done** | API `GET /api/v1/degree-audit/me` trả CTĐT theo ngành SV + mapping CTĐT↔Học phần và trạng thái hoàn thành; UI `CyKhungChngTrnhDegreeAuditRoadmap.jsx` hiển thị theo khối kiến thức. |
 | 4 | Kiểm tra tiến độ học tập (Transcript/Bảng điểm)| STUDENT | **🟠 P1-High** | ✅ **Done** | Bảng `Bang_Diem_Mon` + API `GET /api/v1/transcript/me` (lọc `hocKyId`), GPA hệ 4; cập nhật prerequisite qua điểm ≥ 1.0; UI `KimTraTinHcTpTranscriptDashboard.jsx`. |
 | 5 | Tính năng Trước Giờ G (Giỏ hàng Pre-Registration)| STUDENT | **🟡 P2-Medium** | ⬜ Todo | Tính năng tiện ích, bản nháp, có thể bỏ qua để test lõi thực tế (Đăng ký thẳng) trước. |
@@ -57,5 +57,6 @@
 - [x] Task 4 - Bảng điểm / Transcript: `BangDiemMon` + `TranscriptController` + `ITranscriptService/TranscriptServiceImpl` + `findTranscriptRows` + frontend `KimTraTinHcTpTranscriptDashboard.jsx` gọi `GET /api/v1/transcript/me`
 - [x] Task 9 - Thanh toán QR: `PaymentController` + `IPaymentService/PaymentServiceImpl` + `PaymentGatewayAdapter` (MOCK/VNPay/MoMo) + `GiaoDichThanhToan` + UI `ThanhTonQrCodeOpenApi.jsx`
 - [x] Task 8 - Ví SV: `ViSinhVien` + `GiaoDichVi` + `IWalletService/WalletServiceImpl` + `WalletController` + `confirm-mock` + `sumHocPhiDangKyBySinhVien` + UI `VSinhVinStudentWallet.jsx`
+- [x] Task 2 - Hồ sơ SV: `findWithProfileByTaiKhoanId` + `IStudentProfileService/StudentProfileServiceImpl` + `StudentProfileController` + UI `TraCuHSCNhnThTcOnline.jsx`
 - [x] Task 16 - Điểm danh GV: `BuoiDiemDanh` + `DiemDanhDangKy` + `IAttendanceService/AttendanceServiceImpl` + `LecturerAttendanceController` + `StudentAttendanceController` + UI `QunLLpGingDyimDanh.jsx` + `DataSeeder` (GV_SEED)
 - [x] Task 17 - Nhập điểm GV: `BangDiemMonRepository` + `IGradingService/GradingServiceImpl` + `LecturerGradingController` + `findGradebookRowsForLop` + transcript filter công bố + UI `MngLiNhpQunLimGradingSystem.jsx`
