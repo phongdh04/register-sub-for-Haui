@@ -1,0 +1,105 @@
+package com.example.demo.service.impl;
+
+import com.example.demo.domain.entity.GiaoDichThanhToan;
+import com.example.demo.domain.entity.SinhVien;
+import com.example.demo.domain.entity.User;
+import com.example.demo.payment.PaymentGatewayAdapter;
+import com.example.demo.payment.PaymentInitResult;
+import com.example.demo.payload.request.CreateTuitionQrRequest;
+import com.example.demo.payload.response.PaymentQrResponse;
+import com.example.demo.repository.GiaoDichThanhToanRepository;
+import com.example.demo.repository.SinhVienRepository;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.service.IPaymentService;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class PaymentServiceImpl implements IPaymentService {
+
+    private final UserRepository userRepository;
+    private final SinhVienRepository sinhVienRepository;
+    private final GiaoDichThanhToanRepository giaoDichThanhToanRepository;
+    private final List<PaymentGatewayAdapter> paymentGatewayAdapters;
+
+    @Override
+    @Transactional
+    public PaymentQrResponse createTuitionQr(String username, CreateTuitionQrRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài khoản: " + username));
+
+        SinhVien sinhVien = sinhVienRepository.findByTaiKhoan_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
+
+        String provider = request.getProvider() == null || request.getProvider().isBlank()
+                ? "MOCK"
+                : request.getProvider().trim().toUpperCase();
+
+        String maDonHang = "EP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+
+        GiaoDichThanhToan gd = GiaoDichThanhToan.builder()
+                .sinhVien(sinhVien)
+                .soTien(request.getSoTien())
+                .noiDung(request.getNoiDung())
+                .provider(provider)
+                .trangThai("CHO_THANH_TOAN")
+                .maDonHang(maDonHang)
+                .build();
+        gd = giaoDichThanhToanRepository.save(gd);
+
+        PaymentGatewayAdapter adapter = resolveAdapter(provider);
+        PaymentInitResult init = adapter.initiate(gd);
+
+        gd.setQrContent(init.qrContent());
+        gd.setRedirectUrl(init.redirectUrl());
+        gd = giaoDichThanhToanRepository.save(gd);
+
+        return toResponse(gd, init.clientHint());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentQrResponse getMyPayment(String username, Long idGiaoDich) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài khoản: " + username));
+
+        SinhVien sinhVien = sinhVienRepository.findByTaiKhoan_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
+
+        GiaoDichThanhToan gd = giaoDichThanhToanRepository.findByIdAndSinhVien_IdSinhVien(idGiaoDich, sinhVien.getIdSinhVien())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giao dịch."));
+
+        return toResponse(gd, null);
+    }
+
+    private PaymentGatewayAdapter resolveAdapter(String provider) {
+        return paymentGatewayAdapters.stream()
+                .filter(a -> !(a instanceof com.example.demo.payment.MockQrPaymentAdapter))
+                .filter(a -> a.supports(provider))
+                .findFirst()
+                .orElseGet(() -> paymentGatewayAdapters.stream()
+                        .filter(a -> a instanceof com.example.demo.payment.MockQrPaymentAdapter)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Thiếu adapter MOCK.")));
+    }
+
+    private static PaymentQrResponse toResponse(GiaoDichThanhToan gd, String extraHint) {
+        return PaymentQrResponse.builder()
+                .idGiaoDich(gd.getIdGiaoDich())
+                .maDonHang(gd.getMaDonHang())
+                .soTien(gd.getSoTien())
+                .provider(gd.getProvider())
+                .trangThai(gd.getTrangThai())
+                .noiDung(gd.getNoiDung())
+                .qrContent(gd.getQrContent())
+                .redirectUrl(gd.getRedirectUrl())
+                .ghiChu(extraHint)
+                .build();
+    }
+}
