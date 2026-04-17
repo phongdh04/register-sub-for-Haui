@@ -10,6 +10,10 @@ const KimTraTinHcTpTranscriptDashboard = () => {
   const [semesterId, setSemesterId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [appealRow, setAppealRow] = useState(null);
+  const [appealLyDo, setAppealLyDo] = useState('');
+  const [appealBusy, setAppealBusy] = useState(false);
+  const [appealMsg, setAppealMsg] = useState('');
 
   const fetchTranscript = useCallback(async (hocKyId) => {
     const token = localStorage.getItem('jwt_token');
@@ -91,6 +95,33 @@ const KimTraTinHcTpTranscriptDashboard = () => {
     );
   }, [data]);
 
+  const submitAppeal = async () => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token || !appealRow) return;
+    if (appealLyDo.trim().length < 10) {
+      setAppealMsg('Lý do tối thiểu 10 ký tự.');
+      return;
+    }
+    setAppealBusy(true);
+    setAppealMsg('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/retake-appeals`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idDangKy: appealRow.idDangKy, lyDoSinhVien: appealLyDo.trim() })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Không nộp được yêu cầu.');
+      setAppealMsg('Đã gửi yêu cầu phúc khảo. Giảng viên sẽ xử lý trên cổng Teacher Portal.');
+      setAppealRow(null);
+      setAppealLyDo('');
+    } catch (e) {
+      setAppealMsg(e.message || 'Lỗi.');
+    } finally {
+      setAppealBusy(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-surface">
       <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -133,6 +164,11 @@ const KimTraTinHcTpTranscriptDashboard = () => {
 
         {!loading && !error && data && (
           <>
+            {appealMsg && (
+              <div className="rounded-xl bg-primary-container/30 border border-primary/20 px-4 py-3 text-sm text-on-surface">
+                {appealMsg}
+              </div>
+            )}
             <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-surface-container-lowest p-8 rounded-xl">
                 <p className="text-sm font-semibold text-on-surface-variant mb-1">GPA học kỳ (đang xem)</p>
@@ -177,12 +213,13 @@ const KimTraTinHcTpTranscriptDashboard = () => {
                       <th className="px-4 py-4 text-[11px] font-black uppercase text-on-surface-variant text-center">TC</th>
                       <th className="px-4 py-4 text-[11px] font-black uppercase text-on-surface-variant text-center">Điểm hệ 4</th>
                       <th className="px-4 py-4 text-[11px] font-black uppercase text-on-surface-variant text-center">Điểm chữ</th>
+                      <th className="px-4 py-4 text-[11px] font-black uppercase text-on-surface-variant text-center">Phúc khảo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10">
                     {flatRows.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-sm text-on-surface-variant text-center">
+                        <td colSpan={6} className="px-6 py-8 text-sm text-on-surface-variant text-center">
                           Chưa có dữ liệu đăng ký hoặc chưa có điểm.
                         </td>
                       </tr>
@@ -210,6 +247,23 @@ const KimTraTinHcTpTranscriptDashboard = () => {
                           <td className="px-4 py-4 text-center text-sm">
                             {row.diemHe4 != null ? row.diemChu || '—' : '—'}
                           </td>
+                          <td className="px-4 py-4 text-center">
+                            {row.congBoChinhThuc && row.diemHe4 != null ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAppealRow(row);
+                                  setAppealLyDo('');
+                                  setAppealMsg('');
+                                }}
+                                className="text-xs font-bold text-primary hover:underline"
+                              >
+                                Nộp ĐK
+                              </button>
+                            ) : (
+                              <span className="text-xs text-on-surface-variant">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -218,8 +272,49 @@ const KimTraTinHcTpTranscriptDashboard = () => {
               </div>
               <div className="p-6 border-t border-outline-variant/10 text-xs text-on-surface-variant">
                 * GPA chỉ tính điểm đã <strong>công bố chính thức</strong> (trạng thái <code className="font-mono">DA_CONG_BO</code> hoặc bản ghi cũ không trạng thái). Điểm nháp vẫn hiển thị kèm nhãn &quot;Chờ công bố&quot;.
+                {' '}
+                Phúc khảo: chỉ khi điểm đã công bố; mỗi học phần chỉ một yêu cầu <strong>chờ xử lý</strong> tại một thời điểm.
               </div>
             </section>
+
+            {appealRow && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
+                <div className="bg-surface-container-lowest rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+                  <h3 className="text-lg font-black text-on-surface">Yêu cầu phúc khảo điểm</h3>
+                  <p className="text-sm text-on-surface-variant">
+                    {appealRow.tenHocPhan} ({appealRow.maHocPhan}) — điểm hiện tại:{' '}
+                    <strong>{formatGpa(appealRow.diemHe4)}</strong>
+                  </p>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase">Lý do (tối thiểu 10 ký tự)</label>
+                  <textarea
+                    className="w-full rounded-xl bg-surface-container border-none p-3 text-sm min-h-[120px] focus:ring-2 focus:ring-primary/30"
+                    value={appealLyDo}
+                    onChange={(e) => setAppealLyDo(e.target.value)}
+                    placeholder="Trình bày lý do khiếu nại / xin phúc khảo…"
+                  />
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-full text-sm font-bold text-on-surface-variant hover:bg-surface-container-high"
+                      onClick={() => {
+                        setAppealRow(null);
+                        setAppealLyDo('');
+                      }}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      disabled={appealBusy}
+                      onClick={submitAppeal}
+                      className="px-5 py-2 rounded-full text-sm font-bold bg-primary text-white disabled:opacity-50"
+                    >
+                      {appealBusy ? 'Đang gửi…' : 'Gửi yêu cầu'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

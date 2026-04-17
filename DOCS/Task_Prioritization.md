@@ -30,7 +30,7 @@
 | 15 | Báo Cáo Phân Tích (Analytics) | ADMIN | **🟢 P3-Low** | ✅ **Done** | API `GET /api/v1/admin/analytics/dashboard` (đăng ký/HK, SV/khoa, GD theo TT, top lớp theo sĩ số HK mới nhất); UI `BoCoPhnTchAnalytics.jsx` biểu đồ thanh (CSS). |
 | 16 | Quản lý Lớp Giảng dạy & Điểm danh | TEACHER | **🟠 P1-High** | ✅ **Done** | API `/api/v1/lecturer/attendance/*` (lớp phụ trách, buổi điểm danh, PATCH dòng); bảng `Buoi_Diem_Danh`, `Diem_Danh_Dang_Ky`; SV `POST /api/v1/attendance/me/check-in`; UI `QunLLpGingDyimDanh.jsx`; seed `GV_SEED` ↔ `gv01`. |
 | 17 | Mạng lưới Nhập & Quản Lý Điểm | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET/PATCH/POST /api/v1/lecturer/grades/...` (nháp `CHO_CONG_BO` → công bố `DA_CONG_BO`); GPA/transcript & tiên quyết chỉ tính điểm đã công bố; UI `MngLiNhpQunLimGradingSystem.jsx`. |
-| 18 | Gác thi & Xử lý Khiếu nại (Phúc khảo) | TEACHER | **🟢 P3-Low** | ⬜ Todo | Quy trình nghiệp vụ lắt nhắt của riêng Giảng viên, nhường chỗ cho code lõi Queue. |
+| 18 | Gác thi & Xử lý Khiếu nại (Phúc khảo) | TEACHER | **🟢 P3-Low** | ✅ **Done** | Bảng `Yeu_Cau_Phuc_Khao`; SV `POST/GET /api/v1/retake-appeals`; GV `GET/PATCH /api/v1/lecturer/retake-appeals`; UI `GcThiXLKhiuNiPhcKho.jsx` + nộp ĐK trên `KimTraTinHcTpTranscriptDashboard.jsx`. |
 | 19 | Cánh Tay Phải "Cố Vấn Học Tập" | TEACHER | **🟡 P2-Medium** | ✅ **Done** | API `GET /api/v1/lecturer/advisory/at-risk?minFailedCredits=12` (SV cùng khoa GV, tổng TC môn rớt điểm công bố dưới 1.0); UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`. |
 | 20 | **Đăng nhập truyền thống & Quản lý Phiên** | ALL | **🔴 P0-Blocker** | ✅ Done | Cánh cửa bảo vệ. Không có JWT & Login (Spring Security) thì mọi API đều tịt ngòi 401. |
 | 21 | **Hệ thống Phân Quyền Đa Tầng (RBAC)** | ADMIN | **🔴 P0-Blocker** | ✅ Done | Role Spring chặn API (Proxy Pattern). Tách Admin, Student, Teacher. |
@@ -65,3 +65,4 @@
 - [x] Task 14 - Giám sát tài chính Admin: `IAdminFinanceService/AdminFinanceServiceImpl` + `AdminFinanceController` + queries `GiaoDichThanhToan`/`GiaoDichVi`/`DangKyHocPhan`/`ViSinhVien` + UI `GimStTiChnhKTonAdmin.jsx`
 - [x] Task 15 - Analytics Admin: `IAdminAnalyticsService/AdminAnalyticsServiceImpl` + `AdminAnalyticsController` + queries tổng hợp `DangKy`/`SinhVien`/`GiaoDichThanhToan`/`LopHocPhan` + UI `BoCoPhnTchAnalytics.jsx`
 - [x] Task 19 - Cố vấn học tập: `ILecturerAdvisoryService/LecturerAdvisoryServiceImpl` + `LecturerAdvisoryController` + `DangKyHocPhanRepository` (at-risk + GPA) + UI `CnhTayPhiCVnHcTpAcademicAdvising.jsx`
+- [x] Task 18 - Phúc khảo: `YeuCauPhucKhao` + `IRetakeAppealService/RetakeAppealServiceImpl` + `RetakeAppealController` + `LecturerRetakeAppealController` + UI `GcThiXLKhiuNiPhcKho.jsx` + nộp yêu cầu từ `KimTraTinHcTpTranscriptDashboard.jsx`
