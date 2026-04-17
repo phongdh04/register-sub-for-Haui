@@ -28,7 +28,7 @@
 | 13 | Quản Lý Danh Mục Khung & Mở Lớp | ADMIN | **🔴 P0-Blocker** | ✅ **Done** | Admin phải bơm Data môn học Data Master vào CSDL thì SV mới đăng ký được. |
 | 14 | Giám Sát Tài Chính (Kế Toán Admin) | ADMIN | **🟡 P2-Medium** | ⬜ Todo | Dashboard Kế toán. View sau khi Payment Gateaway chạy nuột. |
 | 15 | Báo Cáo Phân Tích (Analytics) | ADMIN | **🟢 P3-Low** | ⬜ Todo | Vẽ biểu đồ Dashboard Chart. Trang trí Admin (Chỉ làm khi rảnh rỗi). |
-| 16 | Quản lý Lớp Giảng dạy & Điểm danh | TEACHER | **🟠 P1-High** | ⬜ Todo | Tính năng chính diện của User Giảng viên. Bắt buộc có. |
+| 16 | Quản lý Lớp Giảng dạy & Điểm danh | TEACHER | **🟠 P1-High** | ✅ **Done** | API `/api/v1/lecturer/attendance/*` (lớp phụ trách, buổi điểm danh, PATCH dòng); bảng `Buoi_Diem_Danh`, `Diem_Danh_Dang_Ky`; SV `POST /api/v1/attendance/me/check-in`; UI `QunLLpGingDyimDanh.jsx`; seed `GV_SEED` ↔ `gv01`. |
 | 17 | Mạng lưới Nhập & Quản Lý Điểm | TEACHER | **🟡 P2-Medium** | ⬜ Todo | Teacher nhập điểm, cập nhật state thành Phê Duyệt đẩy về Bảng điểm SV. |
 | 18 | Gác thi & Xử lý Khiếu nại (Phúc khảo) | TEACHER | **🟢 P3-Low** | ⬜ Todo | Quy trình nghiệp vụ lắt nhắt của riêng Giảng viên, nhường chỗ cho code lõi Queue. |
 | 19 | Cánh Tay Phải "Cố Vấn Học Tập" | TEACHER | **🟡 P2-Medium** | ⬜ Todo | Bộ lọc sinh viên nợ > 12 tín chỉ rớt đài. Cần thiết nhưng không gấp. |
@@ -56,3 +56,4 @@
 - [x] Task 10 - Dịch vụ Thời khóa biểu: `TimetableController` + `ITimetableService/TimetableServiceImpl` + DTO `TimetableResponse` + frontend `DchVThiKhaBiuThngMinh.jsx` gọi API `GET /api/v1/timetable/me`
 - [x] Task 4 - Bảng điểm / Transcript: `BangDiemMon` + `TranscriptController` + `ITranscriptService/TranscriptServiceImpl` + `findTranscriptRows` + frontend `KimTraTinHcTpTranscriptDashboard.jsx` gọi `GET /api/v1/transcript/me`
 - [x] Task 9 - Thanh toán QR: `PaymentController` + `IPaymentService/PaymentServiceImpl` + `PaymentGatewayAdapter` (MOCK/VNPay/MoMo) + `GiaoDichThanhToan` + UI `ThanhTonQrCodeOpenApi.jsx`
+- [x] Task 16 - Điểm danh GV: `BuoiDiemDanh` + `DiemDanhDangKy` + `IAttendanceService/AttendanceServiceImpl` + `LecturerAttendanceController` + `StudentAttendanceController` + UI `QunLLpGingDyimDanh.jsx` + `DataSeeder` (GV_SEED)

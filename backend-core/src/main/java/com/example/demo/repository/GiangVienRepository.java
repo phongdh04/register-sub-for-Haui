@@ -9,6 +9,8 @@ import java.util.Optional;
 
 @Repository
 public interface GiangVienRepository extends JpaRepository<GiangVien, Long> {
+    Optional<GiangVien> findByTaiKhoan_Id(Long taiKhoanId);
+
     Optional<GiangVien> findByMaGiangVien(String maGiangVien);
     List<GiangVien> findByKhoa_IdKhoa(Long idKhoa);
     boolean existsByMaGiangVien(String maGiangVien);
