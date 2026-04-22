@@ -45,7 +45,7 @@ const HThngPhnQuynaTngRbacRoleBasedAccessControl = () => {
 <div className="p-4 rounded-xl bg-primary/5 border-l-4 border-primary flex items-center justify-between group cursor-pointer">
 <div className="flex items-center gap-4">
 <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
-<span className="material-symbols-outlined text-xl" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>shield_person</span>
+<span className="material-symbols-outlined text-xl">shield_person</span>
 </div>
 <div>
 <p className="font-bold text-on-surface">Admin</p>
@@ -303,3 +303,4 @@ const HThngPhnQuynaTngRbacRoleBasedAccessControl = () => {
 };
 
 export default HThngPhnQuynaTngRbacRoleBasedAccessControl;
+

@@ -23,7 +23,7 @@ const QunLDanhMcKhungMLpDataMaster = () => {
                         Hoàn tác
                     </button>
 <button className="px-8 py-2.5 rounded-full font-bold text-sm bg-gradient-to-br from-primary to-primary-container text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2">
-<span className="material-symbols-outlined text-lg" data-icon="save" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>save</span>
+<span className="material-symbols-outlined text-lg" data-icon="save">save</span>
                         Lưu TKB
                     </button>
 </div>
@@ -51,7 +51,7 @@ const QunLDanhMcKhungMLpDataMaster = () => {
 </label>
 </div>
 <button className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg flex items-center justify-center gap-3 hover:shadow-xl hover:shadow-primary/20 transition-all">
-<span className="material-symbols-outlined animate-pulse" data-icon="bolt" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>bolt</span>
+<span className="material-symbols-outlined animate-pulse" data-icon="bolt">bolt</span>
                         Bắt đầu xếp lịch thuật toán AI
                     </button>
 </div>
@@ -80,7 +80,7 @@ const QunLDanhMcKhungMLpDataMaster = () => {
 <div className="bg-error-container/30 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-l-8 border-error">
 <div className="flex items-start gap-4">
 <div className="p-3 bg-error/10 rounded-full text-error">
-<span className="material-symbols-outlined text-3xl" data-icon="warning" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>warning</span>
+<span className="material-symbols-outlined text-3xl" data-icon="warning">warning</span>
 </div>
 <div className="space-y-1">
 <h3 className="text-lg font-bold text-on-error-container">Phát hiện xung đột tài nguyên (12 Lỗi)</h3>
@@ -239,3 +239,4 @@ const QunLDanhMcKhungMLpDataMaster = () => {
 };
 
 export default QunLDanhMcKhungMLpDataMaster;
+

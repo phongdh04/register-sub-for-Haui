@@ -92,7 +92,7 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài khoản: " + username));
         SinhVien sv = sinhVienRepository.findByTaiKhoan_Id(user.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
-        GioHangDangKy g = gioHangDangKyRepository.findByIdAndSinhVien_IdSinhVien(idGioHang, sv.getIdSinhVien())
+        GioHangDangKy g = gioHangDangKyRepository.findByIdGioHangAndSinhVien_IdSinhVien(idGioHang, sv.getIdSinhVien())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dòng giỏ hàng."));
         gioHangDangKyRepository.delete(g);
     }

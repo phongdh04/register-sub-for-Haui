@@ -283,7 +283,7 @@ Thêm vào giỏ
 </main>
 {/*  Contextual FAB (Execution for Task-specific action)  */}
 <button className="fixed bottom-8 right-8 w-14 h-14 bg-secondary shadow-2xl rounded-full flex items-center justify-center text-white hover:scale-110 active:scale-90 transition-transform z-50">
-<span className="material-symbols-outlined" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>add</span>
+<span className="material-symbols-outlined">add</span>
 </button>
 
     </>
@@ -291,3 +291,4 @@ Thêm vào giỏ
 };
 
 export default TnhNngLcMnnhCao;
+

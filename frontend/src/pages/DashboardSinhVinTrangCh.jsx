@@ -21,7 +21,7 @@ const DashboardSinhVinTrangCh = () => {
 <div className="col-span-12 lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
 {/*  Financial Status Widget  */}
 <div className="col-span-1 md:col-span-2 bg-surface-container-lowest rounded-full p-8 shadow-sm relative overflow-hidden">
-<div className="absolute top-0 right-0 w-48 h-48 bg-primary-container/5 rounded-full -mr-24 -"></div>
+<div className="absolute top-0 right-0 w-48 h-48 bg-primary-container/5 rounded-full -mr-24"></div>
 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
 <div>
 <p className="text-sm font-label font-bold text-on-surface-variant uppercase tracking-widest mb-4">Tình trạng tài chính</p>
@@ -159,3 +159,4 @@ const DashboardSinhVinTrangCh = () => {
 };
 
 export default DashboardSinhVinTrangCh;
+

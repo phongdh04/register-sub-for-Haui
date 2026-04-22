@@ -1,6 +1,20 @@
 import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { clearSession } from '../config/api';
+
+const studentNav = [
+  { to: '/student/dashboardsinhvintrangch', label: 'Dashboard Sinh viên', icon: 'dashboard' },
+  { to: '/student/tracuhscnhnthtconline', label: 'Hồ sơ cá nhân', icon: 'badge' },
+  { to: '/student/cykhungchngtrnhdegreeauditroadmap', label: 'Degree Audit', icon: 'account_tree' },
+  { to: '/student/kimtratinhctptranscriptdashboard', label: 'Transcript', icon: 'school' },
+  { to: '/student/tnhnngtrcgigpreregistrationgilp', label: 'Pre-registration', icon: 'shopping_cart' },
+  { to: '/student/tnhnnglcmnnhcao', label: 'Lọc môn học', icon: 'filter_alt' },
+  { to: '/student/thuttonlogicngchtvalidationrulesengine', label: 'Validation Rules', icon: 'rule' },
+  { to: '/student/vsinhvinstudentwallet', label: 'Ví sinh viên', icon: 'wallet' },
+  { to: '/student/thanhtonqrcodeopenapi', label: 'Thanh toán QR', icon: 'qr_code_2' },
+  { to: '/student/dchvthikhabiuthngminh', label: 'Thời khóa biểu', icon: 'calendar_month' },
+  { to: '/student/lchthinhgigv', label: 'Lịch thi & Đánh giá GV', icon: 'event' }
+];
 
 const StudentLayout = () => {
   const navigate = useNavigate();
@@ -19,50 +33,20 @@ const StudentLayout = () => {
           EduPort Student
         </div>
         <div className="overflow-y-auto flex-1 p-4 space-y-1 text-sm">
-          <Link to="/student/dashboardsinhvintrangch" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Dashboard Sinh viên (Trang chủ)</span>
-          </Link>
-          <Link to="/student/tracuhscnhnthtconline" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Tra cứu Hồ sơ Cá nhân & Thủ tục online</span>
-          </Link>
-          <Link to="/student/cykhungchngtrnhdegreeauditroadmap" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Cây Khung Chương Trình (Degree Audit / Roadmap)</span>
-          </Link>
-          <Link to="/student/kimtratinhctptranscriptdashboard" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Kiểm tra tiến độ học tập (Transcript Dashboard)</span>
-          </Link>
-          <Link to="/student/tnhnngtrcgigpreregistrationgilp" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Tính năng Trước Giờ G (Pre-Registration / Giả lập)</span>
-          </Link>
-          <Link to="/student/tnhnnglcmnnhcao" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Tính năng Lọc Môn Đỉnh Cao</span>
-          </Link>
-          <Link to="/student/thuttonlogicngchtvalidationrulesengine" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Thuật Toán Logic Đóng Chốt (Validation Rules Engine)</span>
-          </Link>
-          <Link to="/student/vsinhvinstudentwallet" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Ví Sinh Viên (Student Wallet)</span>
-          </Link>
-          <Link to="/student/thanhtonqrcodeopenapi" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Thanh Toán QR Code (Open API)</span>
-          </Link>
-          <Link to="/student/dchvthikhabiuthngminh" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Dịch vụ Thời Khóa Biểu thông minh</span>
-          </Link>
-          <Link to="/student/lchthinhgigv" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Lịch Thi & Đánh Giá GV</span>
-          </Link>
+          {studentNav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-2 p-2 rounded-lg transition ${
+                  isActive ? 'bg-[#00288e] text-white shadow-sm' : 'text-[#141b2b] hover:bg-[#dde1ff]'
+                }`
+              }
+            >
+              <span className="material-symbols-outlined shrink-0 text-base">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
+            </NavLink>
+          ))}
         </div>
         <div className="p-4 border-t border-[#dce2f7] space-y-2">
           {username && (

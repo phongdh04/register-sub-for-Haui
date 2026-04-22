@@ -27,33 +27,16 @@ import MngLiNhpQunLimGradingSystem from './pages/MngLiNhpQunLimGradingSystem';
 import GcThiXLKhiuNiPhcKho from './pages/GcThiXLKhiuNiPhcKho';
 import CnhTayPhiCVnHcTpAcademicAdvising from './pages/CnhTayPhiCVnHcTpAcademicAdvising';
 import TeacherLayout from './layouts/TeacherLayout';
-import ngNhpTruynThngQunLPhin from './pages/ngNhpTruynThngQunLPhin';
+import NgNhpTruynThngQunLPhin from './pages/ngNhpTruynThngQunLPhin';
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<ngNhpTruynThngQunLPhin />} />
+        <Route path="/login" element={<NgNhpTruynThngQunLPhin />} />
         <Route path="/all/ngnhptruynthngqunlphin" element={<Navigate to="/login" replace />} />
 
-        <Route path="/" element={
-          <div className="min-h-screen bg-[#f1f3ff] flex flex-col items-center justify-center p-6">
-            <h1 className="text-4xl font-black text-[#001453] mb-2 text-center">EduPort</h1>
-            <p className="text-[#00288e] mb-8 text-center max-w-lg">Cổng đăng ký học phần — đăng nhập theo vai trò, sau đó chọn portal tương ứng.</p>
-            <Link
-              to="/login"
-              className="mb-10 px-8 py-4 rounded-full bg-[#00288e] text-white font-bold text-lg shadow-lg hover:bg-[#001a5c] transition text-center"
-            >
-              Đăng nhập
-            </Link>
-            <p className="text-sm text-[#334155] mb-4 font-semibold uppercase tracking-wide">Portal (cần đúng JWT)</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-              <Link to="/student" className="block p-4 border rounded-xl bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Student Portal</Link>
-              <Link to="/admin" className="block p-4 border rounded-xl bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Admin Portal</Link>
-              <Link to="/teacher" className="block p-4 border rounded-xl bg-white shadow hover:-translate-y-1 transition text-center font-bold text-lg text-[#00288e]">Teacher Portal</Link>
-            </div>
-          </div>
-        } />
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route
           path="/student"

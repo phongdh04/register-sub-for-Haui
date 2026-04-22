@@ -15,7 +15,7 @@ import java.util.Optional;
 @Repository
 public interface GiaoDichThanhToanRepository extends JpaRepository<GiaoDichThanhToan, Long> {
 
-    Optional<GiaoDichThanhToan> findByIdAndSinhVien_IdSinhVien(Long id, Long idSinhVien);
+    Optional<GiaoDichThanhToan> findByIdGiaoDichAndSinhVien_IdSinhVien(Long idGiaoDich, Long idSinhVien);
 
     Optional<GiaoDichThanhToan> findByMaDonHang(String maDonHang);
 

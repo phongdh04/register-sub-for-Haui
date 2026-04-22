@@ -36,9 +36,9 @@ public class User {
     @Column(name = "email_otp", length = 255)
     private String email;
 
-    @Column(name = "mfa_bat", nullable = false)
+    @Column(name = "mfa_bat")
     @Builder.Default
-    private boolean mfaEnabled = false;
+    private Boolean mfaEnabled = false;
 
     // Callbacks to ensure default values align with DB constraints (Liskov concept prep if subclassed)
     @PrePersist

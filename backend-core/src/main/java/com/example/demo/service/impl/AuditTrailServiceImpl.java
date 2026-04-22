@@ -21,7 +21,7 @@ import java.util.Map;
 public class AuditTrailServiceImpl implements IAuditTrailService {
 
     private final NhatKyHanhDongRepository nhatKyHanhDongRepository;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     @Transactional

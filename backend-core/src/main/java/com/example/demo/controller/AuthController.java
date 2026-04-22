@@ -66,7 +66,7 @@ public class AuthController {
                 .orElseThrow(() -> new IllegalStateException("User missing sau khi xác thực"));
 
         boolean adminMfaActive = user.getRole() == Role.ADMIN
-                && user.isMfaEnabled()
+                && user.getMfaEnabled() != null && user.getMfaEnabled()
                 && user.getEmail() != null
                 && !user.getEmail().isBlank();
 

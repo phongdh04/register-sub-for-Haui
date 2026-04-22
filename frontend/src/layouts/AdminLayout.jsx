@@ -1,6 +1,16 @@
 import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { clearSession } from '../config/api';
+
+const adminNav = [
+  { to: '/admin/bocophntchanalytics', label: 'Analytics', icon: 'monitoring' },
+  { to: '/admin/gimsttichnhktonadmin', label: 'Giám sát tài chính', icon: 'payments' },
+  { to: '/admin/qunldanhmckhungmlpdatamaster', label: 'Data master', icon: 'dataset' },
+  { to: '/admin/setupcuhnhgivngtrafficsplittingqueuecontrol', label: 'Giờ vàng / Queue', icon: 'hub' },
+  { to: '/admin/hthngphnquynatngrbacrolebasedaccesscontrol', label: 'RBAC', icon: 'admin_panel_settings' },
+  { to: '/admin/xcthcayutmfa2favchks', label: 'MFA / 2FA', icon: 'verified_user' },
+  { to: '/admin/lchsnhtkduchnaudittrailslogging', label: 'Audit trail', icon: 'history' }
+];
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -19,34 +29,20 @@ const AdminLayout = () => {
           EduPort Admin
         </div>
         <div className="overflow-y-auto flex-1 p-4 space-y-1 text-sm">
-          <Link to="/admin/setupcuhnhgivngtrafficsplittingqueuecontrol" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Setup Cấu Hình Giờ Vàng (Traffic Splitting & Queue Control)</span>
-          </Link>
-          <Link to="/admin/qunldanhmckhungmlpdatamaster" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Quản Lý Danh Mục Khung & Mở Lớp (Data Master)</span>
-          </Link>
-          <Link to="/admin/gimsttichnhktonadmin" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Giám Sát Tài Chính (Kế Toán Admin)</span>
-          </Link>
-          <Link to="/admin/bocophntchanalytics" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Báo Cáo Phân Tích (Analytics)</span>
-          </Link>
-          <Link to="/admin/hthngphnquynatngrbacrolebasedaccesscontrol" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Hệ thống Phân Quyền Đa Tầng (RBAC - Role Based Access Control)</span>
-          </Link>
-          <Link to="/admin/xcthcayutmfa2favchks" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Xác thực Đa Yếu Tố (MFA / 2FA) và Chữ ký số</span>
-          </Link>
-          <Link to="/admin/lchsnhtkduchnaudittrailslogging" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Lịch sử Nhật Ký Dấu Chân (Audit Trails & Logging)</span>
-          </Link>
+          {adminNav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-2 p-2 rounded-lg transition ${
+                  isActive ? 'bg-[#00288e] text-white shadow-sm' : 'text-[#141b2b] hover:bg-[#dde1ff]'
+                }`
+              }
+            >
+              <span className="material-symbols-outlined shrink-0 text-base">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
+            </NavLink>
+          ))}
         </div>
         <div className="p-4 border-t border-[#dce2f7] space-y-2">
           {username && (

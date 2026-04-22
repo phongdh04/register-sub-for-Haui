@@ -29,7 +29,7 @@ public class AdminMfaController {
         User user = currentAdmin();
         boolean hasEmail = user.getEmail() != null && !user.getEmail().isBlank();
         return ResponseEntity.ok(new AdminMfaStatusResponse(
-                user.isMfaEnabled(),
+                Boolean.TRUE.equals(user.getMfaEnabled()),
                 EmailMaskUtil.mask(user.getEmail()),
                 hasEmail));
     }
@@ -52,7 +52,7 @@ public class AdminMfaController {
         userRepository.save(user);
         boolean hasEmail = user.getEmail() != null && !user.getEmail().isBlank();
         return ResponseEntity.ok(new AdminMfaStatusResponse(
-                user.isMfaEnabled(),
+                Boolean.TRUE.equals(user.getMfaEnabled()),
                 EmailMaskUtil.mask(user.getEmail()),
                 hasEmail));
     }

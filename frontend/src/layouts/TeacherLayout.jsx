@@ -1,6 +1,13 @@
 import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { clearSession } from '../config/api';
+
+const teacherNav = [
+  { to: '/teacher/qunllpgingdyimdanh', label: 'Điểm danh lớp', icon: 'co_present' },
+  { to: '/teacher/mnglinhpqunlimgradingsystem', label: 'Nhập điểm', icon: 'grading' },
+  { to: '/teacher/gcthixlkhiuniphckho', label: 'Phúc khảo', icon: 'fact_check' },
+  { to: '/teacher/cnhtayphicvnhctpacademicadvising', label: 'Cố vấn học tập', icon: 'support_agent' }
+];
 
 const TeacherLayout = () => {
   const navigate = useNavigate();
@@ -19,26 +26,36 @@ const TeacherLayout = () => {
           EduPort Teacher
         </div>
         <div className="overflow-y-auto flex-1 p-4 space-y-1 text-sm">
-          <Link to="/teacher/qunllpgingdyimdanh" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Quản lý Lớp Giảng dạy & Điểm danh</span>
-          </Link>
-          <Link to="/teacher/mnglinhpqunlimgradingsystem" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Mạng lưới Nhập & Quản Lý Điểm (Grading System)</span>
-          </Link>
-          <Link to="/teacher/gcthixlkhiuniphckho" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Gác thi & Xử lý Khiếu nại (Phúc khảo)</span>
-          </Link>
-          <Link to="/teacher/cnhtayphicvnhctpacademicadvising" className="flex items-center gap-2 p-2 hover:bg-[#dde1ff] text-[#141b2b] rounded transition">
-            <span className="material-symbols-outlined shrink-0 text-base">arrow_right</span>
-            <span className="truncate">Cánh Tay Phải "Cố Vấn Học Tập" (Academic Advising)</span>
-          </Link>
+          {teacherNav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-2 p-2 rounded-lg transition ${
+                  isActive ? 'bg-[#00288e] text-white shadow-sm' : 'text-[#141b2b] hover:bg-[#dde1ff]'
+                }`
+              }
+            >
+              <span className="material-symbols-outlined shrink-0 text-base">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
+            </NavLink>
+          ))}
         </div>
-        <div className="p-4 border-t border-[#dce2f7]">
-          <Link to="/" className="text-[#ba1a1a] flex items-center gap-2 px-2 py-2 hover:bg-[#ffdad6] rounded transition">
-            <span className="material-symbols-outlined">logout</span> Thoát
+        <div className="p-4 border-t border-[#dce2f7] space-y-2">
+          {username && (
+            <p className="text-xs text-[#334155] px-2 truncate" title={username}>
+              <span className="font-semibold">Đã đăng nhập:</span> {username}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={logout}
+            className="w-full text-left text-[#ba1a1a] flex items-center gap-2 px-2 py-2 hover:bg-[#ffdad6] rounded transition"
+          >
+            <span className="material-symbols-outlined">logout</span> Đăng xuất
+          </button>
+          <Link to="/" className="block text-sm text-[#00288e] px-2 py-1 hover:underline">
+            Về trang chủ
           </Link>
         </div>
       </aside>

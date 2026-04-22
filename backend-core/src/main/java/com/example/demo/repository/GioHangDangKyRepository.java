@@ -24,5 +24,5 @@ public interface GioHangDangKyRepository extends JpaRepository<GioHangDangKy, Lo
 
     boolean existsBySinhVien_IdSinhVienAndLopHocPhan_IdLopHpAndHocKy_IdHocKy(Long idSinhVien, Long idLopHp, Long idHocKy);
 
-    Optional<GioHangDangKy> findByIdAndSinhVien_IdSinhVien(Long idGioHang, Long idSinhVien);
+    Optional<GioHangDangKy> findByIdGioHangAndSinhVien_IdSinhVien(Long idGioHang, Long idSinhVien);
 }

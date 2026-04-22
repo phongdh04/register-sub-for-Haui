@@ -18,7 +18,7 @@ const SetupCuHnhGiVngTrafficSplittingQueueControl = () => {
 </div>
 {/*  Kill Switch Button  */}
 <button className="group flex items-center gap-3 bg-error text-on-error px-8 py-4 rounded-full font-bold shadow-lg hover:bg-red-700 transition-all hover:scale-105 active:scale-95">
-<span className="material-symbols-outlined animate-pulse" style={{ /* FIXME: convert style string to object -> font-variation-settings: 'FILL' 1; */ }}>emergency_home</span>
+<span className="material-symbols-outlined animate-pulse">emergency_home</span>
 <span className="uppercase tracking-widest text-sm">Kill Switch: Dừng Khẩn Cấp</span>
 </button>
 </div>
@@ -268,3 +268,4 @@ const SetupCuHnhGiVngTrafficSplittingQueueControl = () => {
 };
 
 export default SetupCuHnhGiVngTrafficSplittingQueueControl;
+

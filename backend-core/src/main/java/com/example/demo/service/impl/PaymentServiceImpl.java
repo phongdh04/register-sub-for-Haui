@@ -74,7 +74,7 @@ public class PaymentServiceImpl implements IPaymentService {
         SinhVien sinhVien = sinhVienRepository.findByTaiKhoan_Id(user.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
 
-        GiaoDichThanhToan gd = giaoDichThanhToanRepository.findByIdAndSinhVien_IdSinhVien(idGiaoDich, sinhVien.getIdSinhVien())
+        GiaoDichThanhToan gd = giaoDichThanhToanRepository.findByIdGiaoDichAndSinhVien_IdSinhVien(idGiaoDich, sinhVien.getIdSinhVien())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giao dịch."));
 
         return toResponse(gd, null);
@@ -89,7 +89,7 @@ public class PaymentServiceImpl implements IPaymentService {
         SinhVien sinhVien = sinhVienRepository.findByTaiKhoan_Id(user.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
 
-        GiaoDichThanhToan gd = giaoDichThanhToanRepository.findByIdAndSinhVien_IdSinhVien(idGiaoDich, sinhVien.getIdSinhVien())
+        GiaoDichThanhToan gd = giaoDichThanhToanRepository.findByIdGiaoDichAndSinhVien_IdSinhVien(idGiaoDich, sinhVien.getIdSinhVien())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giao dịch."));
 
         if ("THANH_CONG".equals(gd.getTrangThai())) {
