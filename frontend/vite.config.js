@@ -8,4 +8,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      // Dev: cho phép gọi /api... cùng origin (5173) nếu VITE_API_BASE_URL để trống — tránh lỗi "No static resource" trên Vite.
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
 })

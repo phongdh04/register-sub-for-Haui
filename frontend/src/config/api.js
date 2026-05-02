@@ -1,5 +1,17 @@
-/** Base URL backend Java (override bằng VITE_API_BASE_URL trong .env). */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+/**
+ * Base URL backend Java (VITE_API_BASE_URL trong .env).
+ * Dev không gán env: dùng '' + proxy Vite (/api → localhost:8080) để tránh gọi nhầm cổng 5173.
+ */
+export const API_BASE_URL = (() => {
+  const v = import.meta.env.VITE_API_BASE_URL;
+  if (v != null && String(v).trim() !== '') {
+    return String(v).trim().replace(/\/$/, '');
+  }
+  if (import.meta.env.DEV) {
+    return '';
+  }
+  return 'http://localhost:8080';
+})();
 
 export function authHeaders() {
   const token = localStorage.getItem('jwt_token');

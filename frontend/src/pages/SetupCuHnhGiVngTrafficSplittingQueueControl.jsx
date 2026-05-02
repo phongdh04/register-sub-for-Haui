@@ -103,7 +103,7 @@ const SetupCuHnhGiVngTrafficSplittingQueueControl = () => {
     }
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/hoc-ky/${id}/lich-dang-ky`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/hoc-ky/${id}/lich-dang-ky`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({
