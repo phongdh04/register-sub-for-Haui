@@ -17,6 +17,7 @@ import com.example.demo.repository.LopHocPhanRepository;
 import com.example.demo.repository.SinhVienRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.IPreRegistrationCartService;
+import com.example.demo.support.RegistrationScheduleChecker;
 import com.example.demo.util.TkbSlotConflictUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
     private final LopHocPhanRepository lopHocPhanRepository;
     private final GioHangDangKyRepository gioHangDangKyRepository;
     private final DangKyHocPhanRepository dangKyHocPhanRepository;
+    private final RegistrationScheduleChecker registrationScheduleChecker;
 
     @Override
     @Transactional(readOnly = true)
@@ -58,6 +60,7 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
         SinhVien sv = sinhVienRepository.findByTaiKhoan_Id(user.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
         HocKy hk = resolveHocKy(request.getHocKyId());
+        registrationScheduleChecker.requirePreRegistrationOpen(hk);
 
         LopHocPhan lhp = lopHocPhanRepository.findById(request.getIdLopHp())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lớp học phần: " + request.getIdLopHp()));
@@ -137,6 +140,12 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
                 .soDoiTrungLichTrongGioHang(internalPairs)
                 .coTrungLichVoiDangKyChinhThuc(vsReg)
                 .items(rows.stream().map(this::toItemResponse).collect(Collectors.toList()))
+                .preDangKyMoTu(hk.getPreDangKyMoTu())
+                .preDangKyMoDen(hk.getPreDangKyMoDen())
+                .dangKyChinhThucTu(hk.getDangKyChinhThucTu())
+                .dangKyChinhThucDen(hk.getDangKyChinhThucDen())
+                .preDangKyDangMo(registrationScheduleChecker.isPreRegistrationOpen(hk))
+                .dangKyChinhThucDangMo(registrationScheduleChecker.isOfficialRegistrationOpen(hk))
                 .build();
     }
 

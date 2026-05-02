@@ -13,6 +13,7 @@ import com.example.demo.service.validation.IRegistrationValidationHandler;
 import com.example.demo.service.validation.RegistrationValidationException;
 import com.example.demo.service.validation.handler.DuplicateRegistrationHandler;
 import com.example.demo.service.validation.handler.PrerequisiteCourseHandler;
+import com.example.demo.support.RegistrationScheduleChecker;
 import com.example.demo.service.validation.handler.ScheduleConflictHandler;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityNotFoundException;
@@ -45,6 +46,7 @@ public class DangKyHocPhanServiceImpl {
     private final DuplicateRegistrationHandler  duplicateRegistrationHandler;
     private final ScheduleConflictHandler       scheduleConflictHandler;
     private final PrerequisiteCourseHandler     prerequisiteCourseHandler;
+    private final RegistrationScheduleChecker   registrationScheduleChecker;
 
     /** Chain đã được lắp sẵn, dùng lại cho mọi request (stateless). */
     private IRegistrationValidationHandler validationChain;
@@ -72,6 +74,17 @@ public class DangKyHocPhanServiceImpl {
     public boolean processRegistration(RegistrationMessageDto msg) {
         log.info("🔄 Bắt đầu xử lý ĐKHP: traceID={} svID={} lopID={}",
                 msg.getTraceId(), msg.getIdSinhVien(), msg.getIdLopHp());
+
+        HocKy hocKyGate = hocKyRepository.findById(msg.getIdHocKy()).orElse(null);
+        if (hocKyGate == null) {
+            log.warn("⚠️ Từ chối ĐKHP: không tìm thấy học kỳ {} (traceID={})", msg.getIdHocKy(), msg.getTraceId());
+            return false;
+        }
+        if (!registrationScheduleChecker.isOfficialRegistrationOpen(hocKyGate)) {
+            log.warn("⚠️ Từ chối ĐKHP: ngoài phiên đăng ký chính thức (hocKy={} traceID={})",
+                    msg.getIdHocKy(), msg.getTraceId());
+            return false;
+        }
 
         // ── Bước 1: Chạy toàn bộ Chain of Responsibility ──────
         try {

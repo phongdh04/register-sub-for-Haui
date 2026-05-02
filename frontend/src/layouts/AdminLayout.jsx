@@ -6,7 +6,7 @@ const adminNav = [
   { to: '/admin/bocophntchanalytics', label: 'Analytics', icon: 'monitoring' },
   { to: '/admin/gimsttichnhktonadmin', label: 'Giám sát tài chính', icon: 'payments' },
   { to: '/admin/qunldanhmckhungmlpdatamaster', label: 'Data master', icon: 'dataset' },
-  { to: '/admin/setupcuhnhgivngtrafficsplittingqueuecontrol', label: 'Giờ vàng / Queue', icon: 'hub' },
+  { to: '/admin/setupcuhnhgivngtrafficsplittingqueuecontrol', label: 'Lịch đăng ký HK', icon: 'hub' },
   { to: '/admin/hthngphnquynatngrbacrolebasedaccesscontrol', label: 'RBAC', icon: 'admin_panel_settings' },
   { to: '/admin/xcthcayutmfa2favchks', label: 'MFA / 2FA', icon: 'verified_user' },
   { to: '/admin/lchsnhtkduchnaudittrailslogging', label: 'Audit trail', icon: 'history' }

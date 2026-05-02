@@ -3,6 +3,7 @@ package com.example.demo.domain.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -31,6 +32,24 @@ public class HocKy {
 
     @Column(name = "trang_thai_hien_hanh")
     private Boolean trangThaiHienHanh; // Học kỳ đang diễn ra hiện tại
+
+    /**
+     * Phiên đăng ký trước giờ G (giỏ nháp): cả hai null = không khóa theo thời gian.
+     */
+    @Column(name = "pre_dk_mo_tu")
+    private Instant preDangKyMoTu;
+
+    @Column(name = "pre_dk_mo_den")
+    private Instant preDangKyMoDen;
+
+    /**
+     * Đăng ký chính thức (ghi nhận qua Kafka / giờ vàng): cả hai null = không khóa theo thời gian.
+     */
+    @Column(name = "dk_chinh_thuc_tu")
+    private Instant dangKyChinhThucTu;
+
+    @Column(name = "dk_chinh_thuc_den")
+    private Instant dangKyChinhThucDen;
 
     @OneToMany(mappedBy = "hocKy", fetch = FetchType.LAZY)
     private List<LopHocPhan> lopHocPhans;

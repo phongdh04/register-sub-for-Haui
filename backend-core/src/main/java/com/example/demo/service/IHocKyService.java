@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.payload.request.HocKyLichDangKyRequest;
 import com.example.demo.payload.request.HocKyRequest;
 import com.example.demo.payload.response.HocKyResponse;
 
@@ -15,4 +16,7 @@ public interface IHocKyService {
     HocKyResponse create(HocKyRequest request);
     HocKyResponse setActive(Long id);
     void delete(Long id);
+
+    /** Admin: cập nhật lịch đăng ký trước / đăng ký chính thức theo học kỳ. */
+    HocKyResponse updateLichDangKy(Long id, HocKyLichDangKyRequest request);
 }

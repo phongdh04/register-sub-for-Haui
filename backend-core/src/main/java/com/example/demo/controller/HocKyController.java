@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.payload.request.HocKyLichDangKyRequest;
 import com.example.demo.payload.request.HocKyRequest;
 import com.example.demo.payload.response.HocKyResponse;
 import com.example.demo.service.IHocKyService;
@@ -55,6 +56,17 @@ public class HocKyController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<HocKyResponse> setActive(@PathVariable Long id) {
         return ResponseEntity.ok(hocKyService.setActive(id));
+    }
+
+    /**
+     * Cập nhật lịch: phiên đăng ký trước giờ G (giỏ nháp) và phiên đăng ký chính thức.
+     */
+    @PutMapping("/{id}/lich-dang-ky")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<HocKyResponse> updateLichDangKy(
+            @PathVariable Long id,
+            @Valid @RequestBody HocKyLichDangKyRequest body) {
+        return ResponseEntity.ok(hocKyService.updateLichDangKy(id, body));
     }
 
     @DeleteMapping("/{id}")

@@ -1,15 +1,18 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.domain.entity.HocKy;
+import com.example.demo.payload.request.HocKyLichDangKyRequest;
 import com.example.demo.payload.request.HocKyRequest;
 import com.example.demo.payload.response.HocKyResponse;
 import com.example.demo.repository.HocKyRepository;
 import com.example.demo.service.IHocKyService;
+import com.example.demo.support.RegistrationScheduleChecker;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +25,7 @@ import java.util.stream.Collectors;
 public class HocKyServiceImpl implements IHocKyService {
 
     private final HocKyRepository hocKyRepository;
+    private final RegistrationScheduleChecker registrationScheduleChecker;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,6 +90,32 @@ public class HocKyServiceImpl implements IHocKyService {
         hocKyRepository.deleteById(id);
     }
 
+    @Override
+    @Transactional
+    public HocKyResponse updateLichDangKy(Long id, HocKyLichDangKyRequest request) {
+        HocKy hk = findOrThrow(id);
+        validateWindowPair("Đăng ký trước", request.getPreDangKyMoTu(), request.getPreDangKyMoDen());
+        validateWindowPair("Đăng ký chính thức", request.getDangKyChinhThucTu(), request.getDangKyChinhThucDen());
+
+        hk.setPreDangKyMoTu(request.getPreDangKyMoTu());
+        hk.setPreDangKyMoDen(request.getPreDangKyMoDen());
+        hk.setDangKyChinhThucTu(request.getDangKyChinhThucTu());
+        hk.setDangKyChinhThucDen(request.getDangKyChinhThucDen());
+
+        return toResponse(hocKyRepository.save(hk));
+    }
+
+    private static void validateWindowPair(String label, Instant from, Instant to) {
+        boolean hasFrom = from != null;
+        boolean hasTo = to != null;
+        if (hasFrom != hasTo) {
+            throw new IllegalArgumentException(label + ": phải nhập đủ mốc bắt đầu và kết thúc, hoặc để trống cả hai.");
+        }
+        if (hasFrom && from.isAfter(to)) {
+            throw new IllegalArgumentException(label + ": mốc bắt đầu phải trước hoặc trùng mốc kết thúc.");
+        }
+    }
+
     // --- Private helpers ---
 
     private HocKy findOrThrow(Long id) {
@@ -100,6 +130,12 @@ public class HocKyServiceImpl implements IHocKyService {
                 .kyThu(hocKy.getKyThu())
                 .trangThaiHienHanh(hocKy.getTrangThaiHienHanh())
                 .tenHocKy("Học kỳ " + hocKy.getKyThu() + " năm " + hocKy.getNamHoc())
+                .preDangKyMoTu(hocKy.getPreDangKyMoTu())
+                .preDangKyMoDen(hocKy.getPreDangKyMoDen())
+                .dangKyChinhThucTu(hocKy.getDangKyChinhThucTu())
+                .dangKyChinhThucDen(hocKy.getDangKyChinhThucDen())
+                .preDangKyDangMo(registrationScheduleChecker.isPreRegistrationOpen(hocKy))
+                .dangKyChinhThucDangMo(registrationScheduleChecker.isOfficialRegistrationOpen(hocKy))
                 .build();
     }
 }

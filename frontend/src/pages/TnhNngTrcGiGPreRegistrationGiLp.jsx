@@ -9,6 +9,13 @@ const formatVnd = (n) => {
   return new Intl.NumberFormat('vi-VN').format(x) + ' ₫';
 };
 
+const formatIso = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('vi-VN');
+};
+
 const TnhNngTrcGiGPreRegistrationGiLp = () => {
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -133,6 +140,10 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
   const hkBadge = cart?.hocKyLabel || '—';
   const internalConflicts = cart?.soDoiTrungLichTrongGioHang ?? 0;
   const vsOfficial = cart?.coTrungLichVoiDangKyChinhThuc;
+  const preOpen = cart != null && cart.preDangKyDangMo !== false;
+  const officialOpen = cart?.dangKyChinhThucDangMo === true;
+  /** Thiếu field từ API cũ = coi như mở (không khóa). */
+  const canAddToCart = cart != null && cart.preDangKyDangMo !== false;
 
   return (
     <>
@@ -175,7 +186,9 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
                 <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-on-surface-variant font-medium">Trạng thái cổng chính thức:</span>
-                    <span className="text-primary font-bold">Chưa mở (demo)</span>
+                    <span className={`font-bold ${officialOpen ? 'text-emerald-700' : 'text-on-surface-variant'}`}>
+                      {cart ? (officialOpen ? 'Đang mở' : 'Đang đóng') : '—'}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -186,7 +199,7 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
                     <span>Xác nhận Nộp Lưới Môn</span>
                   </button>
                   <p className="text-[10px] text-center text-on-surface-variant italic">
-                    Nút này dành cho luồng đăng ký chính thức khi cổng mở; giỏ trước giờ G chỉ là bản nháp.
+                    Nộp lưới qua dịch vụ hàng đợi (Go) khi cổng chính thức mở; giỏ trước giờ G chỉ là bản nháp trên Java.
                   </p>
                 </div>
               </div>
@@ -194,6 +207,38 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
 
             {error && (
               <div className="rounded-xl border border-error/30 bg-error-container/20 px-4 py-3 text-sm text-error font-medium">{error}</div>
+            )}
+            {!loading && cart && (
+              <div
+                className={`rounded-xl border px-4 py-3 text-sm ${
+                  preOpen
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                    : 'border-amber-200 bg-amber-50 text-amber-950'
+                }`}
+              >
+                <p className="font-bold mb-1">Phiên đăng ký trước (giỏ nháp): {preOpen ? 'Đang mở' : 'Đang đóng'}</p>
+                <p className="text-xs opacity-90">
+                  {cart.preDangKyMoTu || cart.preDangKyMoDen
+                    ? `${formatIso(cart.preDangKyMoTu)} → ${formatIso(cart.preDangKyMoDen)}`
+                    : 'Admin chưa cấu hình khung giờ — bạn có thể dùng giỏ bất cứ lúc nào.'}
+                </p>
+              </div>
+            )}
+            {!loading && cart && (
+              <div
+                className={`rounded-xl border px-4 py-3 text-sm ${
+                  officialOpen
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                    : 'border-slate-200 bg-slate-50 text-slate-800'
+                }`}
+              >
+                <p className="font-bold mb-1">Đăng ký chính thức (hệ thống ghi nhận): {officialOpen ? 'Đang mở' : 'Đang đóng'}</p>
+                <p className="text-xs opacity-90">
+                  {cart.dangKyChinhThucTu || cart.dangKyChinhThucDen
+                    ? `${formatIso(cart.dangKyChinhThucTu)} → ${formatIso(cart.dangKyChinhThucDen)}`
+                    : 'Chưa cấu hình — backend không khóa theo thời gian.'}
+                </p>
+              </div>
             )}
             {loading && <p className="text-on-surface-variant text-sm">Đang tải giỏ hàng…</p>}
 
@@ -265,8 +310,9 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
                     </div>
                     <button
                       type="button"
-                      disabled={addBusy}
+                      disabled={addBusy || !canAddToCart}
                       onClick={addItem}
+                      title={!canAddToCart ? 'Ngoài phiên đăng ký trước do admin cấu hình.' : ''}
                       className="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                     >
                       {addBusy ? 'Đang thêm…' : 'Thêm lớp'}
