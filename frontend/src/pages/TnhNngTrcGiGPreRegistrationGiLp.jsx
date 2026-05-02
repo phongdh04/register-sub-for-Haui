@@ -25,6 +25,9 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
   const [hocKyAdd, setHocKyAdd] = useState('');
   const [addBusy, setAddBusy] = useState(false);
   const [addMsg, setAddMsg] = useState('');
+  const [suggest, setSuggest] = useState(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestErr, setSuggestErr] = useState('');
 
   const fetchCart = useCallback(async (hocKyId) => {
     const token = localStorage.getItem('jwt_token');
@@ -137,6 +140,35 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
     }
   };
 
+  const loadSuggest = useCallback(async () => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
+    const hkId = hocKyFilter.trim() || (cart?.idHocKy != null ? String(cart.idHocKy) : '');
+    if (!hkId) return;
+    setSuggestLoading(true);
+    setSuggestErr('');
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/registration/suggestions/me?hocKyId=${encodeURIComponent(hkId)}`,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Không tải gợi ý môn.');
+      setSuggest(body);
+    } catch (e) {
+      setSuggestErr(e.message || 'Lỗi gợi ý.');
+      setSuggest(null);
+    } finally {
+      setSuggestLoading(false);
+    }
+  }, [cart?.idHocKy, hocKyFilter]);
+
+  useEffect(() => {
+    if (!loading && cart?.idHocKy) {
+      loadSuggest();
+    }
+  }, [loading, cart?.idHocKy, hocKyFilter, loadSuggest]);
+
   const hkBadge = cart?.hocKyLabel || '—';
   const internalConflicts = cart?.soDoiTrungLichTrongGioHang ?? 0;
   const vsOfficial = cart?.coTrungLichVoiDangKyChinhThuc;
@@ -241,6 +273,84 @@ const TnhNngTrcGiGPreRegistrationGiLp = () => {
               </div>
             )}
             {loading && <p className="text-on-surface-variant text-sm">Đang tải giỏ hàng…</p>}
+
+            <section className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <h3 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">school</span>
+                  Môn tham khảo theo khóa &amp; học kỳ (giờ G)
+                </h3>
+                <button
+                  type="button"
+                  onClick={loadSuggest}
+                  className="text-sm font-semibold text-primary hover:underline self-start sm:self-auto"
+                >
+                  Làm mới gợi ý
+                </button>
+              </div>
+              <p className="text-xs text-on-surface-variant">
+                Hệ thống lấy <strong>năm nhập học</strong> từ lớp hành chính, ước lượng thứ tự học kỳ trong CTĐT, rồi
+                hiển thị các <strong>lớp học phần đang mở</strong> (trạng thái DANG_MO) thuộc học kỳ đăng ký và khớp
+                môn trong chương trình (kỳ gợi ý hoặc kỳ kế; môn tự chọn chưa gắn kỳ cũng được liệt kê).
+              </p>
+              {suggestLoading && <p className="text-sm text-on-surface-variant">Đang tải gợi ý…</p>}
+              {suggestErr && (
+                <p className="text-sm text-error bg-error-container/20 rounded-lg px-3 py-2">{suggestErr}</p>
+              )}
+              {suggest && !suggestLoading && (
+                <div className="space-y-3 text-sm">
+                  <div className="flex flex-wrap gap-3 text-on-surface">
+                    <span className="px-2 py-1 rounded-full bg-primary-container text-on-primary-container font-bold text-xs">
+                      {suggest.nhanKhoa}
+                    </span>
+                    <span>
+                      Lớp: <strong>{suggest.maLop}</strong> — {suggest.tenLop}
+                    </span>
+                    <span>
+                      HK đăng ký: <strong>{suggest.hocKyLabel}</strong>
+                    </span>
+                    <span>
+                      Thứ tự HK (ước lượng CTĐT): <strong>{suggest.thuTuHocKyUocLuong}</strong>
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant italic">{suggest.moTaCachTinh}</p>
+                  {(!suggest.lopDeXuat || suggest.lopDeXuat.length === 0) && (
+                    <p className="text-on-surface-variant text-sm">Không có lớp mở khớp gợi ý cho học kỳ này.</p>
+                  )}
+                  {suggest.lopDeXuat?.length > 0 && (
+                    <div className="overflow-x-auto border border-outline-variant/20 rounded-lg">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-surface-container-low text-on-surface-variant text-xs uppercase">
+                          <tr>
+                            <th className="px-3 py-2">Mã lớp</th>
+                            <th className="px-3 py-2">Môn</th>
+                            <th className="px-3 py-2 text-center">TC</th>
+                            <th className="px-3 py-2">Còn chỗ</th>
+                            <th className="px-3 py-2 font-mono">id lớp HP</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-outline-variant/20">
+                          {suggest.lopDeXuat.map((r) => (
+                            <tr key={r.idLopHp} className="hover:bg-surface-container-low/60">
+                              <td className="px-3 py-2 font-mono text-primary font-medium">{r.maLopHp}</td>
+                              <td className="px-3 py-2">
+                                <div className="font-medium">{r.tenHocPhan}</div>
+                                <div className="text-xs text-on-surface-variant">{r.maHocPhan}</div>
+                              </td>
+                              <td className="px-3 py-2 text-center">{r.soTinChi ?? '—'}</td>
+                              <td className="px-3 py-2">
+                                {r.siSoConLai ?? '—'} / {r.siSoToiDa ?? '—'}
+                              </td>
+                              <td className="px-3 py-2 font-mono text-xs">{r.idLopHp}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
 
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between h-32 group hover:translate-y-[-4px] transition-transform duration-300">

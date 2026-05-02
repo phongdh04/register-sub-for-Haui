@@ -1,8 +1,11 @@
 package com.example.demo.service;
 
 import com.example.demo.payload.request.CourseSearchRequest;
+import com.example.demo.domain.entity.LopHocPhan;
 import com.example.demo.payload.response.CourseSearchResponse;
 import org.springframework.data.domain.Page;
+
+import java.util.List;
 
 /**
  * Interface cho chức năng tìm kiếm môn học (Task 6).
@@ -29,4 +32,7 @@ public interface ICourseSearchService {
      * @return CourseSearchResponse đầy đủ thông tin.
      */
     CourseSearchResponse getCourseDetail(Long idLopHp);
+
+    /** Map danh sách lớp HP (đã fetch đủ graph) sang DTO tìm kiếm — dùng cho gợi ý đăng ký. */
+    List<CourseSearchResponse> mapLopHocPhanList(Iterable<LopHocPhan> lops);
 }

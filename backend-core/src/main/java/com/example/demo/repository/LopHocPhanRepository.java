@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,21 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
     List<LopHocPhan> findByHocKy_IdHocKy(Long idHocKy);
 
     List<LopHocPhan> findByHocKy_IdHocKyAndTrangThai(Long idHocKy, String trangThai);
+
+    @Query("""
+            SELECT DISTINCT l FROM LopHocPhan l
+            JOIN FETCH l.hocPhan hp
+            JOIN FETCH l.hocKy hk
+            LEFT JOIN FETCH l.giangVien gv
+            WHERE hk.idHocKy = :hkId
+              AND hp.idHocPhan IN :ids
+              AND l.trangThai = :tt
+            ORDER BY hp.tenHocPhan ASC
+            """)
+    List<LopHocPhan> findOpenByHocKyAndHocPhanIds(
+            @Param("hkId") Long idHocKy,
+            @Param("ids") Collection<Long> idHocPhans,
+            @Param("tt") String trangThai);
 
     List<LopHocPhan> findByGiangVien_IdGiangVien(Long idGiangVien);
 

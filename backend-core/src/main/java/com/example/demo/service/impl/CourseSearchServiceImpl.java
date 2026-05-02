@@ -18,6 +18,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Implementation tìm kiếm môn học (Task 6).
  *
@@ -78,6 +81,15 @@ public class CourseSearchServiceImpl implements ICourseSearchService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Không tìm thấy lớp học phần với ID: " + idLopHp));
         return toResponse(lop);
+    }
+
+    @Override
+    public List<CourseSearchResponse> mapLopHocPhanList(Iterable<LopHocPhan> lops) {
+        List<CourseSearchResponse> out = new ArrayList<>();
+        for (LopHocPhan l : lops) {
+            out.add(toResponse(l));
+        }
+        return out;
     }
 
     // ════════════════════════════════════════════════════════════
