@@ -40,4 +40,33 @@ public interface BangDiemMonRepository extends JpaRepository<BangDiemMon, Long> 
     List<Object[]> findStudentsWithFailedCreditsAboveThreshold(
             @Param("khoaId") Long khoaId,
             @Param("minFailTc") int minFailTc);
+
+    /**
+     * SV có đăng ký fail (đã công bố) và chưa có lần pass cùng học phần — nhu cầu học lại §6.2 / §6.3 (gross).
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT sv.idSinhVien)
+            FROM BangDiemMon bdm
+            JOIN bdm.dangKyHocPhan dk
+            JOIN dk.sinhVien sv
+            JOIN dk.lopHocPhan lhp
+            JOIN lhp.hocPhan hp
+            WHERE hp.idHocPhan = :hocPhanId
+              AND dk.trangThaiDangKy = 'THANH_CONG'
+              AND bdm.diemHe4 IS NOT NULL AND bdm.diemHe4 < 1.0
+              AND (bdm.trangThai IS NULL OR bdm.trangThai = 'DA_CONG_BO')
+              AND NOT EXISTS (
+                    SELECT 1 FROM BangDiemMon bOk
+                    JOIN bOk.dangKyHocPhan dkOk
+                    JOIN dkOk.sinhVien svOk
+                    JOIN dkOk.lopHocPhan lhpOk
+                    JOIN lhpOk.hocPhan hpOk
+                    WHERE svOk.idSinhVien = sv.idSinhVien
+                      AND hpOk.idHocPhan = hp.idHocPhan
+                      AND dkOk.trangThaiDangKy = 'THANH_CONG'
+                      AND bOk.diemHe4 IS NOT NULL AND bOk.diemHe4 >= 1.0
+                      AND (bOk.trangThai IS NULL OR bOk.trangThai = 'DA_CONG_BO')
+              )
+            """)
+    long countDistinctSinhVienRetakeDemandForCourse(@Param("hocPhanId") Long hocPhanId);
 }

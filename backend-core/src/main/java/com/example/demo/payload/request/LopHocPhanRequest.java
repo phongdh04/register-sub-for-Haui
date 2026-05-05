@@ -32,6 +32,12 @@ public class LopHocPhanRequest {
 
     private BigDecimal hocPhi;
 
+    /** FK master phòng (TKB Phase 1). Null = không gán hoặc (PUT) không đổi nếu thiết kế client gửi null. */
+    private Long idPhongHoc;
+
+    /** Gói TKB BACK-TKB-004 — null giữ/ghi nhận không gán như các FK khác. */
+    private Long idTkbBlock;
+
     /**
      * Lịch học JSON array.
      * Vd: [{"thu": 2, "tiet": "1-3", "phong": "A.101", "ngay_bat_dau": "2024-09-10", "ngay_ket_thuc": "2024-12-10"}]

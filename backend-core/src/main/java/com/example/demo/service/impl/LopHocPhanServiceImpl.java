@@ -4,19 +4,26 @@ import com.example.demo.domain.entity.GiangVien;
 import com.example.demo.domain.entity.HocKy;
 import com.example.demo.domain.entity.HocPhan;
 import com.example.demo.domain.entity.LopHocPhan;
+import com.example.demo.domain.entity.PhongHoc;
+import com.example.demo.domain.entity.TkbBlock;
 import com.example.demo.payload.request.LopHocPhanRequest;
 import com.example.demo.payload.response.LopHocPhanResponse;
 import com.example.demo.repository.GiangVienRepository;
 import com.example.demo.repository.HocKyRepository;
 import com.example.demo.repository.HocPhanRepository;
 import com.example.demo.repository.LopHocPhanRepository;
+import com.example.demo.repository.PhongHocRepository;
+import com.example.demo.repository.TkbBlockRepository;
 import com.example.demo.service.ILopHocPhanService;
+import com.example.demo.service.ITkbRevisionService;
+import com.example.demo.service.LopHocPhongDualWriteService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +41,10 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
     private final HocPhanRepository hocPhanRepository;
     private final HocKyRepository hocKyRepository;
     private final GiangVienRepository giangVienRepository;
+    private final PhongHocRepository phongHocRepository;
+    private final TkbBlockRepository tkbBlockRepository;
+    private final LopHocPhongDualWriteService lopHocPhongDualWriteService;
+    private final ITkbRevisionService tkbRevisionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,18 +75,24 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giảng viên ID: " + request.getIdGiangVien()));
         }
 
+        PhongHoc phongHoc = resolvePhongFkOrNull(request.getIdPhongHoc());
+
         LopHocPhan lhp = LopHocPhan.builder()
                 .maLopHp(request.getMaLopHp())
                 .hocPhan(hocPhan)
                 .hocKy(hocKy)
                 .giangVien(giangVien)
+                .phongHoc(phongHoc)
                 .siSoToiDa(request.getSiSoToiDa())
                 .siSoThucTe(0)
                 .hocPhi(request.getHocPhi())
                 .trangThai("CHUA_MO") // Chưa phát hành - Admin phải gọi publishLop() riêng
                 .thoiKhoaBieuJson(request.getThoiKhoaBieuJson())
                 .build();
-        return toResponse(lopHocPhanRepository.save(lhp));
+        lopHocPhongDualWriteService.synchronize(lhp);
+        LopHocPhan saved = lopHocPhanRepository.save(lhp);
+        tkbRevisionService.bumpAfterTkbMutation(request.getIdHocKy());
+        return toResponse(saved);
     }
 
     @Override
@@ -87,17 +104,33 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy giảng viên ID: " + request.getIdGiangVien()));
             lhp.setGiangVien(gv);
         }
+        if (request.getIdPhongHoc() != null) {
+            lhp.setPhongHoc(resolvePhongFk(request.getIdPhongHoc()));
+        }
+        if (request.getIdTkbBlock() != null) {
+            HocKy hk = lhp.getHocKy();
+            if (hk == null) {
+                throw new IllegalStateException("LHP thiếu học kỳ để gán TkbBlock");
+            }
+            lhp.setTkbBlock(resolveTkbBlockOrNull(request.getIdTkbBlock(), hk));
+        }
         lhp.setSiSoToiDa(request.getSiSoToiDa());
         lhp.setHocPhi(request.getHocPhi());
         lhp.setThoiKhoaBieuJson(request.getThoiKhoaBieuJson());
-        return toResponse(lopHocPhanRepository.save(lhp));
+        lopHocPhongDualWriteService.synchronize(lhp);
+        LopHocPhan saved = lopHocPhanRepository.save(lhp);
+        Long hkId = saved.getHocKy() != null ? saved.getHocKy().getIdHocKy() : null;
+        tkbRevisionService.bumpAfterTkbMutation(hkId);
+        return toResponse(saved);
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
-        findOrThrow(id);
-        lopHocPhanRepository.deleteById(id);
+        LopHocPhan lhp = findOrThrow(id);
+        Long hkId = lhp.getHocKy() != null ? lhp.getHocKy().getIdHocKy() : null;
+        lopHocPhanRepository.delete(lhp);
+        tkbRevisionService.bumpAfterTkbMutation(hkId);
     }
 
     /**
@@ -132,10 +165,38 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lớp học phần với ID: " + id));
     }
 
+    private PhongHoc resolvePhongFk(Long idPhongHoc) {
+        return phongHocRepository.findById(idPhongHoc)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phòng ID: " + idPhongHoc));
+    }
+
+    private PhongHoc resolvePhongFkOrNull(Long idPhongHoc) {
+        if (idPhongHoc == null) {
+            return null;
+        }
+        return resolvePhongFk(idPhongHoc);
+    }
+
+    private TkbBlock resolveTkbBlockOrNull(Long idTkbBlock, HocKy hocKy) {
+        if (idTkbBlock == null) {
+            return null;
+        }
+        TkbBlock block = tkbBlockRepository.findById(idTkbBlock)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy TKB block ID: " + idTkbBlock));
+        Long bhk = block.getHocKy() != null ? block.getHocKy().getIdHocKy() : null;
+        if (!Objects.equals(bhk, hocKy.getIdHocKy())) {
+            throw new IllegalArgumentException(
+                    "TKB block không thuộc học kỳ của lớp: block.hk=" + bhk + " lhp.hk=" + hocKy.getIdHocKy());
+        }
+        return block;
+    }
+
     private LopHocPhanResponse toResponse(LopHocPhan lhp) {
         HocPhan hp = lhp.getHocPhan();
         HocKy hk = lhp.getHocKy();
         GiangVien gv = lhp.getGiangVien();
+        PhongHoc phong = lhp.getPhongHoc();
+        TkbBlock tb = lhp.getTkbBlock();
         int conLai = lhp.getSiSoToiDa() - (lhp.getSiSoThucTe() != null ? lhp.getSiSoThucTe() : 0);
         return LopHocPhanResponse.builder()
                 .idLopHp(lhp.getIdLopHp())
@@ -153,6 +214,10 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
                 .siSoConLai(conLai)
                 .hocPhi(lhp.getHocPhi())
                 .trangThai(lhp.getTrangThai())
+                .idPhongHoc(phong != null ? phong.getIdPhong() : null)
+                .maPhongHoc(phong != null ? phong.getMaPhong() : null)
+                .idTkbBlock(tb != null ? tb.getIdTkbBlock() : null)
+                .maTkbBlock(tb != null ? tb.getMaBlock() : null)
                 .thoiKhoaBieuJson(lhp.getThoiKhoaBieuJson())
                 .build();
     }

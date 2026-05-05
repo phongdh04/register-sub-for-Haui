@@ -26,6 +26,18 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
     Optional<LopHocPhan> findByMaLopHp(String maLopHp);
 
     List<LopHocPhan> findByHocKy_IdHocKy(Long idHocKy);
+    List<LopHocPhan> findByTkbBlock_IdTkbBlock(Long idTkbBlock);
+
+    /** Eager các FK cần cho snapshot admin (BK-TKB-011/012). */
+    @Query("""
+            SELECT DISTINCT l FROM LopHocPhan l
+            LEFT JOIN FETCH l.phongHoc ph
+            LEFT JOIN FETCH l.giangVien gv
+            LEFT JOIN FETCH l.hocPhan hp
+            LEFT JOIN FETCH l.tkbBlock tb
+            WHERE l.hocKy.idHocKy = :hid
+            """)
+    List<LopHocPhan> findForSchedulingSnapshot(@Param("hid") Long idHocKy);
 
     List<LopHocPhan> findByHocKy_IdHocKyAndTrangThai(Long idHocKy, String trangThai);
 
@@ -66,6 +78,8 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
     Optional<LopHocPhan> findWithGiangVienForAttendance(@Param("id") Long id);
 
     boolean existsByMaLopHp(String maLopHp);
+
+    boolean existsByPhongHoc_IdPhong(Long idPhong);
 
     /**
      * Atomic increment để sync kết quả từ Redis về DB.

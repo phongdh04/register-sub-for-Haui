@@ -6,16 +6,23 @@ import com.example.demo.domain.entity.Khoa;
 import com.example.demo.domain.entity.LichThi;
 import com.example.demo.domain.entity.LopHocPhan;
 import com.example.demo.domain.entity.PhieuDuThi;
+import com.example.demo.domain.entity.GvBusySlot;
+import com.example.demo.domain.entity.PhongHoc;
 import com.example.demo.domain.entity.SinhVien;
 import com.example.demo.domain.entity.User;
+import com.example.demo.domain.enums.GvBusyLoai;
+import com.example.demo.domain.enums.LoaiPhong;
 import com.example.demo.domain.enums.Role;
 import com.example.demo.domain.enums.Status;
+import com.example.demo.domain.enums.TrangThaiPhong;
 import com.example.demo.repository.DangKyHocPhanRepository;
 import com.example.demo.repository.GiangVienRepository;
+import com.example.demo.repository.GvBusySlotRepository;
 import com.example.demo.repository.HocKyRepository;
 import com.example.demo.repository.KhoaRepository;
 import com.example.demo.repository.LichThiRepository;
 import com.example.demo.repository.PhieuDuThiRepository;
+import com.example.demo.repository.PhongHocRepository;
 import com.example.demo.repository.SinhVienRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +50,8 @@ public class DataSeeder implements CommandLineRunner {
     private final DangKyHocPhanRepository dangKyHocPhanRepository;
     private final LichThiRepository lichThiRepository;
     private final PhieuDuThiRepository phieuDuThiRepository;
+    private final PhongHocRepository phongHocRepository;
+    private final GvBusySlotRepository gvBusySlotRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -109,8 +118,87 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         seedExamScheduleDemoIfEmpty();
+        seedPhongHocBaselinesIfFew();
+        seedGvBusySlotsForSeedGiangVien();
 
         log.info("Database seeding completed.");
+    }
+
+    /** TKB P0: ≥20 phòng demo (nhiều loại, 2 cơ sở). */
+    private void seedPhongHocBaselinesIfFew() {
+        if (phongHocRepository.count() >= 20) {
+            return;
+        }
+        record R(String ma, String ten, String coSo, LoaiPhong loai, int suc) {}
+        R[] rows = new R[] {
+                new R("A101", "Phòng lý thuyết A101", "CS1", LoaiPhong.LY_THUYET, 120),
+                new R("A102", "Phòng lý thuyết A102", "CS1", LoaiPhong.LY_THUYET, 100),
+                new R("A103", "Phòng lý thuyết A103", "CS1", LoaiPhong.LY_THUYET, 80),
+                new R("A201", "Phòng lý thuyết A201", "CS1", LoaiPhong.LY_THUYET, 120),
+                new R("A202", "Phòng lý thuyết A202", "CS1", LoaiPhong.LY_THUYET, 90),
+                new R("B101", "Phòng lý thuyết B101", "CS1", LoaiPhong.LY_THUYET, 150),
+                new R("B102", "Phòng lý thuyết B102", "CS1", LoaiPhong.LY_THUYET, 60),
+                new R("C301", "Hội trường nhỏ C301", "CS1", LoaiPhong.LY_THUYET, 200),
+                new R("LAB-IT-01", "Phòng máy tính 1", "CS1", LoaiPhong.MAY_TINH, 45),
+                new R("LAB-IT-02", "Phòng máy tính 2", "CS1", LoaiPhong.MAY_TINH, 45),
+                new R("LAB-IT-03", "Phòng máy tính 3", "CS1", LoaiPhong.MAY_TINH, 40),
+                new R("LAB-NET-01", "Phòng lab mạng", "CS1", LoaiPhong.MAY_TINH, 35),
+                new R("THN-HOA-01", "Thí nghiệm Hóa 1", "CS1", LoaiPhong.THI_NGHIEM_HOA, 30),
+                new R("THN-HOA-02", "Thí nghiệm Hóa 2", "CS1", LoaiPhong.THI_NGHIEM_HOA, 28),
+                new R("THN-VL-01", "Thí nghiệm Vật lý 1", "CS1", LoaiPhong.THI_NGHIEM_VAT_LY, 32),
+                new R("THN-SINH-01", "Thí nghiệm Sinh 1", "CS1", LoaiPhong.THI_NGHIEM_SINH, 28),
+                new R("D101", "Phòng đa năng D101", "CS2", LoaiPhong.HOC_TAT, 80),
+                new R("D102", "Phòng đa năng D102", "CS2", LoaiPhong.HOC_TAT, 70),
+                new R("D-LT-01", "Lý thuyết D-LT-01", "CS2", LoaiPhong.LY_THUYET, 100),
+                new R("D-LT-02", "Lý thuyết D-LT-02", "CS2", LoaiPhong.LY_THUYET, 90),
+                new R("D-LAB-01", "Máy tính D-LAB-01", "CS2", LoaiPhong.MAY_TINH, 40),
+                new R("D-LAB-02", "Máy tính D-LAB-02", "CS2", LoaiPhong.MAY_TINH, 35),
+                new R("ONLINE-ZOOM-A", "Lớp trực tuyến slot A", "ONLINE", LoaiPhong.KHAC, 300),
+                new R("ONLINE-ZOOM-B", "Lớp trực tuyến slot B", "ONLINE", LoaiPhong.KHAC, 300),
+        };
+        int added = 0;
+        for (R r : rows) {
+            if (!phongHocRepository.existsByMaPhong(r.ma)) {
+                phongHocRepository.save(PhongHoc.builder()
+                        .maPhong(r.ma)
+                        .tenPhong(r.ten)
+                        .maCoSo(r.coSo)
+                        .loaiPhong(r.loai)
+                        .sucChua(r.suc)
+                        .trangThai(TrangThaiPhong.HOAT_DONG)
+                        .build());
+                added++;
+            }
+        }
+        if (added > 0) {
+            log.info("Seeded {} baseline PhongHoc rows (TKB P0)", added);
+        }
+    }
+
+    /** TKB P0: ≥5 pattern busy cho GV_SEED (gv01). */
+    private void seedGvBusySlotsForSeedGiangVien() {
+        giangVienRepository.findByMaGiangVien("GV_SEED").ifPresent(gv -> {
+            List<GvBusySlot> existed = gvBusySlotRepository.findByGiangVien_IdGiangVienOrderByThuAscTietBdAsc(
+                    gv.getIdGiangVien());
+            if (existed.size() >= 5) {
+                return;
+            }
+            LocalDate bd = LocalDate.now().minusMonths(1);
+            LocalDate kt = bd.plusMonths(12);
+            List<GvBusySlot> demos = List.of(
+                    GvBusySlot.builder().giangVien(gv).hocKy(null).thu((short) 2).tietBd((short) 1).tietKt((short) 5)
+                            .loai(GvBusyLoai.HARD).lyDo("Họp khoa sáng thứ 2").ngayBd(bd).ngayKt(kt).build(),
+                    GvBusySlot.builder().giangVien(gv).hocKy(null).thu((short) 4).tietBd((short) 8).tietKt((short) 12)
+                            .loai(GvBusyLoai.HARD).lyDo("Hướng dẫn NCKH").build(),
+                    GvBusySlot.builder().giangVien(gv).hocKy(null).thu((short) 6).tietBd((short) 1).tietKt((short) 3)
+                            .loai(GvBusyLoai.SOFT).lyDo("Ưu tiên không dạy sáng thứ 7").build(),
+                    GvBusySlot.builder().giangVien(gv).hocKy(null).thu((short) 7).tietBd((short) 13).tietKt((short) 15)
+                            .loai(GvBusyLoai.HARD).lyDo("Thí nghiệm cố định").build(),
+                    GvBusySlot.builder().giangVien(gv).hocKy(null).thu((short) 8).tietBd((short) 9).tietKt((short) 12)
+                            .loai(GvBusyLoai.HARD).lyDo("Chủ nhật seminar (HK đặc biệt)").build());
+            gvBusySlotRepository.saveAll(demos);
+            log.info("Seeded {} gv_busy_slot rows for GV_SEED (TKB)", demos.size());
+        });
     }
 
     /**

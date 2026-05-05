@@ -1,5 +1,7 @@
 package com.example.demo.domain.entity;
 
+import com.example.demo.domain.support.TkbThuSurrogate;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -21,7 +23,12 @@ import java.util.Map;
 @Table(name = "Lop_Hoc_Phan", indexes = {
     @Index(name = "idx_lhp_hoc_ky", columnList = "id_hoc_ky"),
     @Index(name = "idx_lhp_hoc_phan", columnList = "id_hoc_phan"),
-    @Index(name = "idx_lhp_giang_vien", columnList = "id_giang_vien")
+    @Index(name = "idx_lhp_giang_vien", columnList = "id_giang_vien"),
+    @Index(name = "idx_lhp_phong_hoc", columnList = "id_phong_hoc"),
+    /** P0 scheduling warm path: conflict theo học kỳ + phòng surrogate + thứ trong tuần. */
+    @Index(name = "idx_lhp_hk_phong_thu", columnList = "id_hoc_ky,id_phong_hoc,thu_tkb"),
+    @Index(name = "idx_lhp_hk_gv_thu", columnList = "id_hoc_ky,id_giang_vien,thu_tkb"),
+    @Index(name = "idx_lhp_tkb_block", columnList = "id_tkb_block")
 })
 @Getter
 @Setter
@@ -50,6 +57,16 @@ public class LopHocPhan {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_giang_vien")
     private GiangVien giangVien;
+
+    /** FK phòng chính (dual-write với {@code thoiKhoaBieuJson} — TKB Phase 1). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_phong_hoc")
+    private PhongHoc phongHoc;
+
+    /** Gói TKB đăng ký bundle — BACK-TKB-004; lifecycle block API chờ P4 (BACK-TKB-037). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tkb_block")
+    private TkbBlock tkbBlock;
 
     /**
      * Pre-calculated field: Tránh COUNT(*) tốn kém.
@@ -81,6 +98,18 @@ public class LopHocPhan {
     @Column(name = "thoi_khoa_bieu_json", columnDefinition = "jsonb")
     private List<Map<String, Object>> thoiKhoaBieuJson;
 
+    /**
+     * Surrogate đọc từ tiết học trong tuần (slot đầu JSON). Phục vụ index planner; không thay semantics JSON đa slot.
+     */
+    @Column(name = "thu_tkb")
+    private Short thuTkb;
+
     @OneToMany(mappedBy = "lopHocPhan", fetch = FetchType.LAZY)
     private List<DangKyHocPhan> dangKys;
+
+    @PrePersist
+    @PreUpdate
+    private void refreshThuSurrogateColumn() {
+        this.thuTkb = TkbThuSurrogate.extractThuFromFirstSlot(this.thoiKhoaBieuJson);
+    }
 }

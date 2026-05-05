@@ -39,4 +39,22 @@ public interface SinhVienRepository extends JpaRepository<SinhVien, Long> {
             ORDER BY COUNT(sv.idSinhVien) DESC
             """)
     List<Object[]> countStudentsByKhoa();
+
+    /**
+     * §6.2 — SV “đúng lộ trình” học học phần có hoc_ky_goi_y trong CTĐT trong HK mục tiêu
+     * (approx: lớp hành chính cùng ngành CTĐT, nam_nhap + kỳ mục tiêu → kỳ logic = hoc_ky_goi_y_CTĐT).
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT sv.idSinhVien) FROM SinhVien sv
+            JOIN sv.lop l
+            JOIN ChuongTrinhDaoTao ctdt ON ctdt.nganhDaoTao.idNganh = l.nganhDaoTao.idNganh
+            WHERE ctdt.idCtdt = :ctdtId
+              AND l.namNhapHoc IS NOT NULL
+              AND ((2 * (:namHocNamDau - l.namNhapHoc)) + :kyThuMucTieu) = :hocKyGoiYCourse
+            """)
+    long countSvOnTrackForCtdtAndCourseSemesterSlot(
+            @Param("ctdtId") Long ctdtId,
+            @Param("namHocNamDau") int namHocNamDau,
+            @Param("kyThuMucTieu") int kyThuMucTieu,
+            @Param("hocKyGoiYCourse") int hocKyGoiYCourse);
 }

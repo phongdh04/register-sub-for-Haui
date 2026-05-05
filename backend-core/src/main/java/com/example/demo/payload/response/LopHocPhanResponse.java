@@ -34,5 +34,12 @@ public class LopHocPhanResponse {
 
     private BigDecimal hocPhi;
     private String trangThai;
+
+    private Long idPhongHoc;
+    private String maPhongHoc;
+
+    private Long idTkbBlock;
+    private String maTkbBlock;
+
     private List<Map<String, Object>> thoiKhoaBieuJson;
 }
