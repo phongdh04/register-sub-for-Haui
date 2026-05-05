@@ -26,8 +26,9 @@ type RedisConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers []string
-	Topic   string
+	Brokers      []string
+	Topic        string
+	PreRegTopic  string
 }
 
 type DBConfig struct {
@@ -53,8 +54,9 @@ func Load() *AppConfig {
 			DB:       rDB,
 		},
 		Kafka: KafkaConfig{
-			Brokers: []string{getEnv("KAFKA_BROKER", "localhost:9092")},
-			Topic:   getEnv("KAFKA_TOPIC", "eduport.dang-ky-hoc-phan"),
+			Brokers:     []string{getEnv("KAFKA_BROKER", "localhost:9092")},
+			Topic:       getEnv("KAFKA_TOPIC", "eduport.dang-ky-hoc-phan"),
+			PreRegTopic: getEnv("KAFKA_PREREG_TOPIC", "eduport.pre-registration-submitted"),
 		},
 		DB: DBConfig{
 			DSN: getEnv("DATABASE_DSN",

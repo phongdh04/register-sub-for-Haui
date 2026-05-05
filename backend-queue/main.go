@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// ── 3. Khởi tạo Service Layer (Business Logic) ────────────
-	queueSvc := service.NewQueueService(rdb, kafkaProducer, cfg.Kafka.Topic)
+	queueSvc := service.NewQueueService(rdb, kafkaProducer, cfg.Kafka.Topic, cfg.Kafka.PreRegTopic)
 
 	// ── 4. Khởi tạo Fiber App với middleware ──────────────────
 	app := fiber.New(fiber.Config{
@@ -93,6 +93,7 @@ func main() {
 				"POST   /api/v1/queue/dang-ky",
 				"DELETE /api/v1/queue/huy-dang-ky",
 				"GET    /api/v1/queue/slot/:id_lop_hp",
+				"POST   /api/v1/queue/pre-reg",
 				"POST   /api/v1/admin/khoi-tao-slot",
 			},
 		})

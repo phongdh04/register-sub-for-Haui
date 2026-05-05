@@ -31,6 +31,9 @@ func (h *QueueHandler) RegisterRoutes(app *fiber.App) {
 
 	// GET /api/v1/queue/slot/:id_lop_hp → Frontend polling slot còn lại (real-time)
 	api.Get("/slot/:id_lop_hp", h.LayThongTinSlot)
+
+	// POST /api/v1/queue/pre-reg -> Backend-core enqueue pre-registration
+	api.Post("/pre-reg", h.EnqueuePreRegistration)
 }
 
 // DangKyHocPhan godoc
@@ -146,4 +149,37 @@ func (h *QueueHandler) LayThongTinSlot(c *fiber.Ctx) error {
 		IDLopHp:    int64(lopHpID),
 		SlotConLai: slot,
 	})
+}
+
+func (h *QueueHandler) EnqueuePreRegistration(c *fiber.Ctx) error {
+	var req domain.PreRegistrationQueueRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "ERROR",
+			"message": "Dữ liệu không hợp lệ: " + err.Error(),
+		})
+	}
+	if req.RequestID == "" || req.LinkID <= 0 || req.DedupeKey == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "ERROR",
+			"message": "requestId, linkId và dedupeKey là bắt buộc",
+		})
+	}
+
+	resp, err := h.queueSvc.SubmitPreRegistration(c.Context(), req)
+	if err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"status":  "ERROR",
+			"message": "Lỗi hệ thống: " + err.Error(),
+		})
+	}
+
+	statusCode := fiber.StatusAccepted
+	if resp.Status == "DUPLICATE" || resp.Status == "REJECTED" {
+		statusCode = fiber.StatusConflict
+	}
+	if resp.Status == "ERROR" {
+		statusCode = fiber.StatusServiceUnavailable
+	}
+	return c.Status(statusCode).JSON(resp)
 }

@@ -31,6 +31,9 @@ type IQueueService interface {
 
 	// LayThongTinSlot trả về số slot còn lại cho một lớp học phần.
 	LayThongTinSlot(ctx context.Context, lopHpID int64) (int64, error)
+
+	// SubmitPreRegistration enqueue pre-registration message sau khi pass anti-spike checks.
+	SubmitPreRegistration(ctx context.Context, req domain.PreRegistrationQueueRequest) (*domain.DangKyResponse, error)
 }
 
 // ============================================================
@@ -40,17 +43,19 @@ type IQueueService interface {
 // QueueService là lõi xử lý logic Giờ Vàng.
 // SRP: Chỉ điều phối Redis (slot/lock) + Kafka (message broker).
 type QueueService struct {
-	rdb        *redis.Client
-	producer   sarama.SyncProducer
-	kafkaTopic string
+	rdb             *redis.Client
+	producer        sarama.SyncProducer
+	kafkaTopic      string
+	preRegKafkaTopic string
 }
 
 // NewQueueService factory constructor – DIP: nhận interface/dependency, không tự new.
-func NewQueueService(rdb *redis.Client, producer sarama.SyncProducer, kafkaTopic string) IQueueService {
+func NewQueueService(rdb *redis.Client, producer sarama.SyncProducer, kafkaTopic string, preRegKafkaTopic string) IQueueService {
 	return &QueueService{
-		rdb:        rdb,
-		producer:   producer,
-		kafkaTopic: kafkaTopic,
+		rdb:              rdb,
+		producer:         producer,
+		kafkaTopic:       kafkaTopic,
+		preRegKafkaTopic: preRegKafkaTopic,
 	}
 }
 
@@ -258,6 +263,64 @@ func (s *QueueService) HuyDangKy(ctx context.Context, req domain.HuyCancelReques
 	}, nil
 }
 
+// SubmitPreRegistration nhận request enqueue từ backend-core cho luồng pre-registration.
+func (s *QueueService) SubmitPreRegistration(ctx context.Context, req domain.PreRegistrationQueueRequest) (*domain.DangKyResponse, error) {
+	if req.RequestID == "" || req.LinkID <= 0 || req.DedupeKey == "" {
+		return &domain.DangKyResponse{
+			Status:  "REJECTED",
+			Message: "Thiếu thông tin bắt buộc của pre-registration request.",
+			TraceID: req.TraceID,
+		}, nil
+	}
+
+	// Cooldown theo requestId để chặn spam retry sát nhau.
+	cooldownKey := fmt.Sprintf("prereg:cooldown:%s", req.RequestID)
+	acquired, err := s.rdb.SetNX(ctx, cooldownKey, "1", 3*time.Second).Result()
+	if err != nil {
+		return nil, fmt.Errorf("lỗi kiểm tra cooldown pre-reg: %w", err)
+	}
+	if !acquired {
+		return &domain.DangKyResponse{
+			Status:  "DUPLICATE",
+			Message: "Yêu cầu đang được xử lý, vui lòng không gửi lại ngay.",
+			TraceID: req.TraceID,
+		}, nil
+	}
+
+	// Lock theo dedupeKey để đảm bảo một người một đợt không enqueue trùng.
+	lockKey := fmt.Sprintf("prereg:lock:%s", req.DedupeKey)
+	lockResult, err := luaAcquireLock.Run(ctx, s.rdb, []string{lockKey}, "30").Int()
+	if err != nil {
+		return nil, fmt.Errorf("lỗi acquire lock pre-reg: %w", err)
+	}
+	if lockResult == 0 {
+		return &domain.DangKyResponse{
+			Status:  "DUPLICATE",
+			Message: "Yêu cầu pre-registration đang được xử lý.",
+			TraceID: req.TraceID,
+		}, nil
+	}
+
+	msg := domain.PreRegistrationQueueMessage{
+		RequestID:     req.RequestID,
+		LinkID:        req.LinkID,
+		DedupeKey:     req.DedupeKey,
+		TraceID:       req.TraceID,
+		SubmittedAt:   req.SubmittedAt,
+		PayloadRefID:  req.PayloadRefID,
+		SchemaVersion: req.SchemaVersion,
+	}
+	if err := s.publishPreRegToKafka(ctx, msg); err != nil {
+		s.rdb.Del(ctx, lockKey)
+		return nil, fmt.Errorf("không thể đẩy pre-reg message vào Kafka: %w", err)
+	}
+	return &domain.DangKyResponse{
+		Status:  "QUEUED",
+		Message: "Pre-registration request đã được enqueue.",
+		TraceID: req.TraceID,
+	}, nil
+}
+
 // ============================================================
 //  PRIVATE HELPERS
 // ============================================================
@@ -289,6 +352,33 @@ func (s *QueueService) publishToKafka(ctx context.Context, msg domain.DangKyMess
 
 	log.Printf("📨 Kafka OK: topic=%s partition=%d offset=%d traceID=%s",
 		s.kafkaTopic, partition, offset, msg.TraceID)
+	return nil
+}
+
+func (s *QueueService) publishPreRegToKafka(ctx context.Context, msg domain.PreRegistrationQueueMessage) error {
+	if s.producer == nil {
+		log.Printf("⚠️  [Dev Mode] Kafka producer nil – bỏ qua gửi pre-reg message traceID=%s", msg.TraceID)
+		return nil
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("marshal pre-reg message thất bại: %w", err)
+	}
+
+	kafkaMsg := &sarama.ProducerMessage{
+		Topic: s.preRegKafkaTopic,
+		Key:   sarama.StringEncoder(msg.RequestID),
+		Value: sarama.StringEncoder(data),
+	}
+
+	partition, offset, err := s.producer.SendMessage(kafkaMsg)
+	if err != nil {
+		return fmt.Errorf("gửi Kafka pre-reg thất bại: %w", err)
+	}
+
+	log.Printf("📨 Kafka pre-reg OK: topic=%s partition=%d offset=%d traceID=%s",
+		s.preRegKafkaTopic, partition, offset, msg.TraceID)
 	return nil
 }
 

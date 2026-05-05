@@ -41,3 +41,25 @@ type SlotInfo struct {
 	SlotConLai int64 `json:"slot_con_lai"`
 	SiSoToiDa  int64 `json:"si_so_toi_da"`
 }
+
+// PreRegistrationQueueRequest là payload backend-core gửi sang Go ingress để enqueue pre-registration.
+type PreRegistrationQueueRequest struct {
+	RequestID    string `json:"requestId"`
+	LinkID       int64  `json:"linkId"`
+	DedupeKey    string `json:"dedupeKey"`
+	TraceID      string `json:"traceId"`
+	SubmittedAt  string `json:"submittedAt"`
+	PayloadRefID int64  `json:"payloadRefId"`
+	SchemaVersion int   `json:"schemaVersion"`
+}
+
+// PreRegistrationQueueMessage là message publish lên Kafka cho luồng pre-registration.
+type PreRegistrationQueueMessage struct {
+	RequestID     string `json:"requestId"`
+	LinkID        int64  `json:"linkId"`
+	DedupeKey     string `json:"dedupeKey"`
+	TraceID       string `json:"traceId"`
+	SubmittedAt   string `json:"submittedAt"`
+	PayloadRefID  int64  `json:"payloadRefId"`
+	SchemaVersion int    `json:"schema_version"`
+}
