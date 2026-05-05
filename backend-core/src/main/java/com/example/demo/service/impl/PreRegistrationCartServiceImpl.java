@@ -6,7 +6,9 @@ import com.example.demo.domain.entity.HocKy;
 import com.example.demo.domain.entity.HocPhan;
 import com.example.demo.domain.entity.LopHocPhan;
 import com.example.demo.domain.entity.SinhVien;
+import com.example.demo.domain.entity.TkbBlock;
 import com.example.demo.domain.entity.User;
+import com.example.demo.payload.request.PreRegCartAddBlockRequest;
 import com.example.demo.payload.request.PreRegCartAddItemRequest;
 import com.example.demo.payload.response.PreRegCartItemResponse;
 import com.example.demo.payload.response.PreRegCartResponse;
@@ -15,6 +17,7 @@ import com.example.demo.repository.GioHangDangKyRepository;
 import com.example.demo.repository.HocKyRepository;
 import com.example.demo.repository.LopHocPhanRepository;
 import com.example.demo.repository.SinhVienRepository;
+import com.example.demo.repository.TkbBlockRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.IPreRegistrationCartService;
 import com.example.demo.support.RegistrationScheduleChecker;
@@ -26,7 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +45,7 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
     private final LopHocPhanRepository lopHocPhanRepository;
     private final GioHangDangKyRepository gioHangDangKyRepository;
     private final DangKyHocPhanRepository dangKyHocPhanRepository;
+    private final TkbBlockRepository tkbBlockRepository;
     private final RegistrationScheduleChecker registrationScheduleChecker;
 
     @Override
@@ -64,6 +71,9 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
 
         LopHocPhan lhp = lopHocPhanRepository.findById(request.getIdLopHp())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lớp học phần: " + request.getIdLopHp()));
+        if (lhp.getTkbBlock() != null && Boolean.TRUE.equals(lhp.getTkbBlock().getBatBuocChonCaBlock())) {
+            throw new IllegalArgumentException("LHP thuộc block bắt buộc đăng ký cả block, vui lòng dùng API /pre-reg/cart/blocks.");
+        }
 
         if (!lhp.getHocKy().getIdHocKy().equals(hk.getIdHocKy())) {
             throw new IllegalArgumentException("Lớp học phần không thuộc học kỳ đang chọn.");
@@ -86,6 +96,44 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
                 .build();
         row = gioHangDangKyRepository.save(row);
         return toItemResponse(row);
+    }
+
+    @Override
+    @Transactional
+    public PreRegCartResponse addBlockAtomically(String username, PreRegCartAddBlockRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài khoản: " + username));
+        SinhVien sv = sinhVienRepository.findByTaiKhoan_Id(user.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
+        TkbBlock block = tkbBlockRepository.findById(request.getIdTkbBlock())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy TKB block: " + request.getIdTkbBlock()));
+        HocKy hk = resolveHocKy(request.getHocKyId());
+        if (!Objects.equals(block.getHocKy().getIdHocKy(), hk.getIdHocKy())) {
+            throw new IllegalArgumentException("Block không thuộc học kỳ đang chọn.");
+        }
+        registrationScheduleChecker.requirePreRegistrationOpen(hk);
+
+        List<LopHocPhan> blockLops = lopHocPhanRepository.findByTkbBlock_IdTkbBlock(block.getIdTkbBlock());
+        blockLops = blockLops.stream()
+                .filter(l -> Objects.equals(l.getHocKy().getIdHocKy(), hk.getIdHocKy()))
+                .toList();
+        if (blockLops.isEmpty()) {
+            throw new IllegalArgumentException("Block chưa có LHP trong học kỳ.");
+        }
+
+        validateNoConflictForBlockBundle(sv.getIdSinhVien(), hk.getIdHocKy(), blockLops);
+        for (LopHocPhan lhp : blockLops) {
+            if (!gioHangDangKyRepository.existsBySinhVien_IdSinhVienAndLopHocPhan_IdLopHpAndHocKy_IdHocKy(
+                    sv.getIdSinhVien(), lhp.getIdLopHp(), hk.getIdHocKy())) {
+                GioHangDangKy row = GioHangDangKy.builder()
+                        .sinhVien(sv)
+                        .lopHocPhan(lhp)
+                        .hocKy(hk)
+                        .build();
+                gioHangDangKyRepository.save(row);
+            }
+        }
+        return buildCartResponse(sv, hk);
     }
 
     @Override
@@ -174,6 +222,42 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
             }
         }
         return false;
+    }
+
+    /** BACK-TKB-039 — conflict SV vs block: trong block + với giỏ + với đăng ký chính thức. */
+    private void validateNoConflictForBlockBundle(Long idSinhVien, Long idHocKy, List<LopHocPhan> blockLops) {
+        for (int i = 0; i < blockLops.size(); i++) {
+            for (int j = i + 1; j < blockLops.size(); j++) {
+                if (TkbSlotConflictUtils.listsConflict(blockLops.get(i).getThoiKhoaBieuJson(), blockLops.get(j).getThoiKhoaBieuJson())) {
+                    throw new IllegalArgumentException("Block có xung đột nội bộ lịch học, không thể đăng ký atomically.");
+                }
+            }
+        }
+        List<GioHangDangKy> existingCart = gioHangDangKyRepository.findBySinhVienAndHocKyWithLop(idSinhVien, idHocKy);
+        Set<Long> inBlock = blockLops.stream().map(LopHocPhan::getIdLopHp).collect(Collectors.toCollection(LinkedHashSet::new));
+        for (LopHocPhan b : blockLops) {
+            for (GioHangDangKy g : existingCart) {
+                LopHocPhan c = g.getLopHocPhan();
+                if (inBlock.contains(c.getIdLopHp())) {
+                    continue;
+                }
+                if (TkbSlotConflictUtils.listsConflict(b.getThoiKhoaBieuJson(), c.getThoiKhoaBieuJson())) {
+                    throw new IllegalArgumentException("Block xung đột với môn đã có trong giỏ đăng ký.");
+                }
+            }
+        }
+        List<DangKyHocPhan> regs = dangKyHocPhanRepository.findRegisteredCoursesInSemester(idSinhVien, idHocKy);
+        for (LopHocPhan b : blockLops) {
+            for (DangKyHocPhan d : regs) {
+                LopHocPhan r = d.getLopHocPhan();
+                if (inBlock.contains(r.getIdLopHp())) {
+                    continue;
+                }
+                if (TkbSlotConflictUtils.listsConflict(b.getThoiKhoaBieuJson(), r.getThoiKhoaBieuJson())) {
+                    throw new IllegalArgumentException("Block xung đột với lớp đã đăng ký chính thức.");
+                }
+            }
+        }
     }
 
     private PreRegCartItemResponse toItemResponse(GioHangDangKy g) {

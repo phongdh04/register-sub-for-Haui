@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.payload.request.PreRegCartAddItemRequest;
+import com.example.demo.payload.request.PreRegCartAddBlockRequest;
 import com.example.demo.payload.response.PreRegCartItemResponse;
 import com.example.demo.payload.response.PreRegCartResponse;
 import com.example.demo.service.IPreRegistrationCartService;
@@ -44,6 +45,15 @@ public class PreRegistrationCartController {
             @Valid @RequestBody PreRegCartAddItemRequest body) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(preRegistrationCartService.addItem(authentication.getName(), body));
+    }
+
+    @PostMapping("/blocks")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<PreRegCartResponse> addBlock(
+            Authentication authentication,
+            @Valid @RequestBody PreRegCartAddBlockRequest body) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(preRegistrationCartService.addBlockAtomically(authentication.getName(), body));
     }
 
     @DeleteMapping("/items/{idGioHang}")
