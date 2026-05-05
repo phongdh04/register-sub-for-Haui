@@ -186,17 +186,17 @@
 - **Mô tả:** §9: enqueue `SolverJob`, trả job id; GET status/result; timeout 120s server-side aligned DoD Epic D.
 - **Phụ thuộc:** BACK-TKB-024
 
-#### BACK-TKB-026 — Loader rule `nhom_trung_tiet` (JSON §5.3)
+#### BACK-TKB-026 — Loader rule `nhom_trung_tiet` (JSON §5.3) ✅ DONE
 
 - **Mô tả:** Entity/bảng `quy_tac_trung_tiet_cohort` hoặc JSON file per HK; map sang constraint pair LHP trong scope.
 - **Phụ thuộc:** BACK-TKB-022
 
-#### BACK-TKB-027 — Enforce cohort trong snapshot + conflict-check + solver
+#### BACK-TKB-027 — Enforce cohort trong snapshot + conflict-check + solver ✅ DONE
 
 - **Mô tả:** Giữ một nguồn sự thật checker; solver dùng cùng rule.
 - **Phụ thuộc:** BACK-TKB-012, BACK-TKB-026
 
-#### BACK-TKB-028 — Multi-scope runner + merge pass policy §7.7
+#### BACK-TKB-028 — Multi-scope runner + merge pass policy §7.7 ✅ DONE
 
 - **Mô tả:** Theo topo order; relax fix biên theo `slackHardCount`; một lần retry micro-scope; log `{scope_conflict_ids, gv_ids, room_ids}`.
 - **Tiêu chí:** Integration test nhỏ 2 scope conflicting (có/không resolve).
@@ -206,42 +206,42 @@
 
 ### Epic publish / P3 — ADR 4.1 backend
 
-#### BACK-TKB-029 — Bảng `schedule_change_set` + FK `HocKy.pending_change_set_id`
+#### BACK-TKB-029 — Bảng `schedule_change_set` + FK `HocKy.pending_change_set_id` ✅ DONE
 
 - **Mô tả:** DDL §4.1 (trạng thái PENDING|APPROVED|REJECTED|APPLIED, `payload_delta` JSONB, …); nullable FK trên `Hoc_Ky` hoặc bảng `hoc_ky_lich_ban` 1–1.
 - **Phụ thuộc:** —
 
-#### BACK-TKB-030 — Impact analysis: `affected_sv_count` + list `affected_sv_ids`
+#### BACK-TKB-030 — Impact analysis: `affected_sv_count` + list `affected_sv_ids` ✅ DONE
 
 - **Mô tả:** Từ `DangKyHocPhan` / enrollment SUCCESS cho các `lhp_id` trong delta.
 - **Phụ thuộc:** BACK-TKB-029
 
-#### BACK-TKB-031 — Bảng `notification_queue` (stub) + contract JSON SCHEDULE_CHANGED
+#### BACK-TKB-031 — Bảng `notification_queue` (stub) + contract JSON SCHEDULE_CHANGED ✅ DONE
 
 - **Mô tả:** Insert payload §4.1; log WARN/INFO đầy đủ; không cần dispatcher email thật P3.
 - **Phụ thuộc:** BACK-TKB-030
 
-#### BACK-TKB-032 — Workflow API submit/review/apply change set
+#### BACK-TKB-032 — Workflow API submit/review/apply change set ✅ DONE
 
 - **Mô tả:** Submit delta → conflict với enrollment → approve → bump `version_no` effective → APPLY → invalidate snapshot · cache.
 - **Phụ thuộc:** BACK-TKB-029, BACK-TKB-012, BACK-TKB-031
 
-#### BACK-TKB-033 — `tkb_chinh_sua_log` (§8.4)
+#### BACK-TKB-033 — `tkb_chinh_sua_log` (§8.4) ✅ DONE
 
 - **Mô tả:** Audit: user, lhp, `ly_do_thay_doi` NOT NULL từ bước review, payload cũ/mới, `effective_version_no`.
 - **Phụ thuộc:** BACK-TKB-032
 
-#### BACK-TKB-034 — PATCH slot: từ chối nếu hard violation sau check
+#### BACK-TKB-034 — PATCH slot: từ chối nếu hard violation sau check ✅ DONE
 
 - **Mô tả:** `/scheduling/lop-hoc-phan/{id}/slot` §9 — chỉ persist khi PASS; học kỳ `CONG_BO` yêu cầu luồng change set (policy).
 - **Phụ thuộc:** BACK-TKB-012, BACK-TKB-032
 
-#### BACK-TKB-035 — Field `tkb_trang_thai` / publish guard
+#### BACK-TKB-035 — Field `tkb_trang_thai` / publish guard ✅ DONE
 
 - **Mô tả:** Enum hoặc bảng trạng thái HK §4 — transition `NHAP` → `CHO_DUYET` → `CONG_BO`; guard solver/patch theo state.
 - **Phụ thuộc:** entity `HocKy` có field hoặc join
 
-#### BACK-TKB-036 — Metrics & logging solver + merge + change set
+#### BACK-TKB-036 — Metrics & logging solver + merge + change set ✅ DONE
 
 - **Mô tả:** Micrometer/timer cho conflict-check, solver, apply delta; correlation id job.
 - **Phụ thuộc:** lệ thuộc các task trước
@@ -250,22 +250,22 @@
 
 ### Epic block / P4 — Đăng ký bundle (backend)
 
-#### BACK-TKB-037 — Lifecycle API `TkbBlock` đầy đủ
+#### BACK-TKB-037 — Lifecycle API `TkbBlock` đầy đủ ✅ DONE
 
 - **Mô tả:** CRUD block theo học kỳ; validator `danh_sach_id_hoc_phan`.
 - **Phụ thuộc:** BACK-TKB-004
 
-#### BACK-TKB-038 — Validator đăng ký bundle atomically
+#### BACK-TKB-038 — Validator đăng ký bundle atomically ✅ DONE
 
 - **Mô tả:** Transaction đăng ký đồng thời các LHP cùng `block_id`; flag `bat_buoc_chon_ca_block`.
 - **Phụ thuộc:** BACK-TKB-037, luồng đăng ký hiện có
 
-#### BACK-TKB-039 — Conflict SV vs block (reuse ScheduleConflictHandler mở rộng nếu cần)
+#### BACK-TKB-039 — Conflict SV vs block (reuse ScheduleConflictHandler mở rộng nếu cần) ✅ DONE
 
 - **Mô tả:** Không overlap slot trong block + các môn ngoài block.
 - **Phụ thuộc:** BACK-TKB-038
 
-#### BACK-TKB-040 — Test tích hợp đăng ký block E2E (Testcontainers nhẹ)
+#### BACK-TKB-040 — Test tích hợp đăng ký block E2E (Testcontainers nhẹ) ✅ DONE
 
 - **Mô tả:** Một scenario happy path + một conflict path.
 - **Phụ thuộc:** BACK-TKB-039
