@@ -1,240 +1,503 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+
+import { API_BASE_URL, authHeaders } from '../config/api';
+
+const safeArray = (x) => (Array.isArray(x) ? x : []);
+
+const toJsonSlots = (text) => {
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+  return JSON.parse(raw);
+};
+
+const toHocPhanIds = (text) => {
+  return String(text || '')
+    .split(',')
+    .map((v) => Number(v.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+};
+
+const prettyJson = (x) => JSON.stringify(x ?? [], null, 2);
+
+const initialBlockForm = {
+  idTkbBlock: null,
+  maBlock: '',
+  tenBlock: '',
+  jsonSlotsText: '[]',
+  hocPhanIdsText: '',
+  batBuocChonCaBlock: false
+};
 
 const QunLDanhMcKhungMLpDataMaster = () => {
+  const [activeTab, setActiveTab] = useState('block');
+  const [hocKys, setHocKys] = useState([]);
+  const [selectedHocKyId, setSelectedHocKyId] = useState('');
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  const [blocks, setBlocks] = useState([]);
+  const [loadingBlocks, setLoadingBlocks] = useState(false);
+  const [blockPanelOpen, setBlockPanelOpen] = useState(false);
+  const [blockForm, setBlockForm] = useState(initialBlockForm);
+  const [savingBlock, setSavingBlock] = useState(false);
+
+  const [forecastForm, setForecastForm] = useState({
+    idChuongTrinhDaoTao: '',
+    siSoToiDaMacDinh: '',
+    heSoDuPhong: '',
+    tyLeSvHocLaiThamGia: ''
+  });
+  const [forecastBusy, setForecastBusy] = useState(false);
+  const [forecastRun, setForecastRun] = useState(null);
+  const [forecastVersionBusy, setForecastVersionBusy] = useState(false);
+
+  useEffect(() => {
+    const loadHocKy = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/hoc-ky`, { headers: authHeaders() });
+        const body = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(body.message || 'Không tải được danh sách học kỳ.');
+        const rows = safeArray(body);
+        setHocKys(rows);
+        if (rows.length) setSelectedHocKyId(String(rows[0].idHocKy));
+      } catch (e) {
+        setErr(e.message || 'Lỗi tải học kỳ.');
+      }
+    };
+    loadHocKy();
+  }, []);
+
+  const loadBlocks = async () => {
+    if (!selectedHocKyId) return;
+    setLoadingBlocks(true);
+    setErr('');
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/scheduling/hoc-ky/${selectedHocKyId}/tkb-blocks`,
+        { headers: authHeaders() }
+      );
+      const body = await res.json().catch(() => []);
+      if (!res.ok) throw new Error(body.message || 'Không tải được danh sách block.');
+      setBlocks(safeArray(body));
+    } catch (e) {
+      setErr(e.message || 'Lỗi tải block.');
+    } finally {
+      setLoadingBlocks(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBlocks();
+  }, [selectedHocKyId]);
+
+  const resetBlockForm = () => {
+    setBlockForm(initialBlockForm);
+    setBlockPanelOpen(false);
+  };
+
+  const openCreateBlock = () => {
+    setBlockForm(initialBlockForm);
+    setBlockPanelOpen(true);
+  };
+
+  const openEditBlock = (b) => {
+    setBlockForm({
+      idTkbBlock: b.idTkbBlock,
+      maBlock: b.maBlock || '',
+      tenBlock: b.tenBlock || '',
+      jsonSlotsText: prettyJson(b.jsonSlots || []),
+      hocPhanIdsText: safeArray(b.danhSachIdHocPhan).join(', '),
+      batBuocChonCaBlock: !!b.batBuocChonCaBlock
+    });
+    setBlockPanelOpen(true);
+  };
+
+  const saveBlock = async () => {
+    if (!selectedHocKyId) return;
+    setSavingBlock(true);
+    setErr('');
+    setMsg('');
+    try {
+      const payload = {
+        maBlock: blockForm.maBlock.trim(),
+        tenBlock: blockForm.tenBlock.trim(),
+        jsonSlots: toJsonSlots(blockForm.jsonSlotsText),
+        danhSachIdHocPhan: toHocPhanIds(blockForm.hocPhanIdsText),
+        batBuocChonCaBlock: !!blockForm.batBuocChonCaBlock
+      };
+      const isEdit = !!blockForm.idTkbBlock;
+      const url = isEdit
+        ? `${API_BASE_URL}/api/v1/admin/scheduling/hoc-ky/${selectedHocKyId}/tkb-blocks/${blockForm.idTkbBlock}`
+        : `${API_BASE_URL}/api/v1/admin/scheduling/hoc-ky/${selectedHocKyId}/tkb-blocks`;
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Lưu block thất bại.');
+      setMsg(isEdit ? 'Đã cập nhật block.' : 'Đã tạo block mới.');
+      resetBlockForm();
+      await loadBlocks();
+    } catch (e) {
+      setErr(e.message || 'Lỗi lưu block.');
+    } finally {
+      setSavingBlock(false);
+    }
+  };
+
+  const deleteBlock = async (idTkbBlock) => {
+    if (!selectedHocKyId || !window.confirm('Xóa block này?')) return;
+    setErr('');
+    setMsg('');
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/scheduling/hoc-ky/${selectedHocKyId}/tkb-blocks/${idTkbBlock}`,
+        { method: 'DELETE', headers: authHeaders() }
+      );
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Xóa block thất bại.');
+      }
+      setMsg('Đã xóa block.');
+      await loadBlocks();
+    } catch (e) {
+      setErr(e.message || 'Lỗi xóa block.');
+    }
+  };
+
+  const runForecast = async () => {
+    if (!selectedHocKyId) return;
+    setForecastBusy(true);
+    setErr('');
+    setMsg('');
+    try {
+      const payload = {
+        idChuongTrinhDaoTao: Number(forecastForm.idChuongTrinhDaoTao)
+      };
+      if (forecastForm.siSoToiDaMacDinh) payload.siSoToiDaMacDinh = Number(forecastForm.siSoToiDaMacDinh);
+      if (forecastForm.heSoDuPhong) payload.heSoDuPhong = Number(forecastForm.heSoDuPhong);
+      if (forecastForm.tyLeSvHocLaiThamGia) payload.tyLeSvHocLaiThamGia = Number(forecastForm.tyLeSvHocLaiThamGia);
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/scheduling/hoc-ky/${selectedHocKyId}/forecast`,
+        { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Forecast thất bại.');
+      setForecastRun(body);
+      setMsg('Đã chạy forecast.');
+    } catch (e) {
+      setErr(e.message || 'Lỗi forecast.');
+    } finally {
+      setForecastBusy(false);
+    }
+  };
+
+  const runVersionAction = async (action) => {
+    if (!selectedHocKyId || !forecastRun?.idDuBaoVersion) return;
+    setForecastVersionBusy(true);
+    setErr('');
+    setMsg('');
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/scheduling/hoc-ky/${selectedHocKyId}/forecast-versions/${forecastRun.idDuBaoVersion}/${action}`,
+        { method: 'POST', headers: authHeaders() }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || `Thao tác ${action} thất bại.`);
+      setMsg(`Đã ${action} version ${forecastRun.idDuBaoVersion}.`);
+      if (body.trangThai) {
+        setForecastRun((prev) => ({ ...prev, trangThai: body.trangThai }));
+      }
+    } catch (e) {
+      setErr(e.message || `Lỗi thao tác ${action}.`);
+    } finally {
+      setForecastVersionBusy(false);
+    }
+  };
+
+  const blockStats = useMemo(() => {
+    const total = blocks.length;
+    const mandatory = blocks.filter((b) => b.batBuocChonCaBlock).length;
+    const hocPhanCount = blocks.reduce((acc, b) => acc + safeArray(b.danhSachIdHocPhan).length, 0);
+    return { total, mandatory, hocPhanCount };
+  }, [blocks]);
+
   return (
-    <>
-      
-{/*  SideNavBar  */}
+    <main className="ml-64 min-h-screen bg-background p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-black text-primary tracking-tight">Academic Framework</h1>
+            <p className="text-on-surface-variant max-w-2xl mt-1">
+              Quản lý Block TKB và dự báo mở lớp theo học kỳ, kết nối trực tiếp API backend phase scheduling.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <select
+              className="bg-white border border-[#dce2f7] rounded-xl px-4 py-2 text-sm font-semibold"
+              value={selectedHocKyId}
+              onChange={(e) => setSelectedHocKyId(e.target.value)}
+            >
+              {hocKys.map((h) => (
+                <option key={h.idHocKy} value={h.idHocKy}>
+                  HK{h.kyThu} - {h.namHoc}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={openCreateBlock}
+              className="px-6 py-2.5 bg-primary text-white font-bold rounded-full"
+            >
+              Tạo Block mới
+            </button>
+          </div>
+        </div>
 
-{/*  Main Content  */}
-<main className=" flex-1 min-h-screen">
-{/*  TopAppBar  */}
+        {err && <div className="rounded-lg bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm">{err}</div>}
+        {msg && <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm">{msg}</div>}
 
-<div className="p-8 max-w-7xl mx-auto space-y-8">
-{/*  Hero Header Section  */}
-<div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-<div className="space-y-2">
-<h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Tự Động Xếp Lịch &amp; Phòng Học</h1>
-<p className="text-on-surface-variant max-w-2xl font-body">Tối ưu hóa tài nguyên giảng đường và thời gian của giảng viên bằng thuật toán AI tiên tiến. Giảm thiểu xung đột lịch trình lên đến 98%.</p>
-</div>
-<div className="flex items-center gap-3">
-<button className="px-6 py-2.5 rounded-full font-bold text-sm bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest transition-all flex items-center gap-2">
-<span className="material-symbols-outlined text-lg" data-icon="undo">undo</span>
-                        Hoàn tác
-                    </button>
-<button className="px-8 py-2.5 rounded-full font-bold text-sm bg-gradient-to-br from-primary to-primary-container text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2">
-<span className="material-symbols-outlined text-lg" data-icon="save">save</span>
-                        Lưu TKB
-                    </button>
-</div>
-</div>
-{/*  Bento Grid - Action & Status  */}
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-{/*  Upload Section  */}
-<div className="lg:col-span-2 bg-surface-container-lowest rounded-full p-8 space-y-6 shadow-sm flex flex-col justify-center">
-<h2 className="text-xl font-bold flex items-center gap-2">
-<span className="material-symbols-outlined text-primary" data-icon="upload_file">upload_file</span>
-                        Nhập dữ liệu đầu vào
-                    </h2>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-<label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-outline-variant rounded-xl hover:bg-blue-50/50 cursor-pointer transition-colors group">
-<span className="material-symbols-outlined text-3xl text-slate-400 group-hover:text-primary mb-2 transition-colors" data-icon="meeting_room">meeting_room</span>
-<span className="text-sm font-bold text-on-surface">Danh sách Phòng rảnh</span>
-<span className="text-[10px] text-on-surface-variant mt-1">Excel, CSV (Tối đa 5MB)</span>
-<input className="hidden" type="file"/>
-</label>
-<label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-outline-variant rounded-xl hover:bg-blue-50/50 cursor-pointer transition-colors group">
-<span className="material-symbols-outlined text-3xl text-slate-400 group-hover:text-secondary mb-2 transition-colors" data-icon="person_search">person_search</span>
-<span className="text-sm font-bold text-on-surface">Giảng viên rảnh</span>
-<span className="text-[10px] text-on-surface-variant mt-1">Excel, CSV (Tối đa 5MB)</span>
-<input className="hidden" type="file"/>
-</label>
-</div>
-<button className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg flex items-center justify-center gap-3 hover:shadow-xl hover:shadow-primary/20 transition-all">
-<span className="material-symbols-outlined animate-pulse" data-icon="bolt">bolt</span>
-                        Bắt đầu xếp lịch thuật toán AI
-                    </button>
-</div>
-{/*  Progress / Status Card  */}
-<div className="bg-surface-container p-8 rounded-full shadow-sm flex flex-col items-center justify-center text-center space-y-6">
-<div className="relative w-32 h-32 flex items-center justify-center">
-<svg className="w-full h-full -rotate-90">
-<circle className="text-surface-container-highest" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
-<circle className="text-primary" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="100" stroke-width="8"></circle>
-</svg>
-<div className="absolute inset-0 flex flex-col items-center justify-center">
-<span className="text-3xl font-black text-on-surface">72%</span>
-<span className="text-[10px] font-bold text-on-surface-variant uppercase">Đang xử lý</span>
-</div>
-</div>
-<div className="space-y-2">
-<p className="font-bold text-on-surface">Đang phân bổ GĐ 2</p>
-<p className="text-xs text-on-surface-variant italic">Dự kiến hoàn thành trong 15 giây...</p>
-</div>
-<div className="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-<div className="bg-primary h-full w-[72%]"></div>
-</div>
-</div>
-</div>
-{/*  Error Alerts Section  */}
-<div className="bg-error-container/30 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-l-8 border-error">
-<div className="flex items-start gap-4">
-<div className="p-3 bg-error/10 rounded-full text-error">
-<span className="material-symbols-outlined text-3xl" data-icon="warning">warning</span>
-</div>
-<div className="space-y-1">
-<h3 className="text-lg font-bold text-on-error-container">Phát hiện xung đột tài nguyên (12 Lỗi)</h3>
-<p className="text-sm text-on-error-container/80">Có 8 giảng viên bị trùng lịch dạy và 4 lớp học chưa được phân bổ phòng trong khung giờ Cao điểm (Sáng Thứ 2).</p>
-</div>
-</div>
-<button className="whitespace-nowrap px-6 py-3 bg-error text-white rounded-full font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition-colors shadow-lg shadow-error/20">
-<span className="material-symbols-outlined text-lg" data-icon="engineering">engineering</span>
-                    Yêu cầu can thiệp
+        <div className="flex border-b border-surface-container gap-10 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('block')}
+            className={`pb-4 text-lg ${activeTab === 'block' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant'}`}
+          >
+            Quản lý Block TKB
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('forecast')}
+            className={`pb-4 text-lg ${activeTab === 'forecast' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant'}`}
+          >
+            Dự báo mở lớp (Forecast)
+          </button>
+        </div>
+
+        {activeTab === 'block' && (
+          <section className="grid grid-cols-12 gap-8">
+            <div className="col-span-12 lg:col-span-8 space-y-4">
+              {loadingBlocks ? (
+                <div className="bg-white rounded-xl p-6 text-sm text-on-surface-variant">Đang tải block...</div>
+              ) : blocks.length === 0 ? (
+                <div className="bg-white rounded-xl p-6 text-sm text-on-surface-variant">Chưa có block cho học kỳ này.</div>
+              ) : (
+                blocks.map((b) => (
+                  <div key={b.idTkbBlock} className="bg-white rounded-2xl p-6 shadow-sm border border-surface-container">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold uppercase text-primary">{b.maBlock}</p>
+                        <h3 className="text-xl font-bold mt-1">{b.tenBlock}</h3>
+                        <p className="text-sm text-on-surface-variant mt-2">
+                          Học phần: {safeArray(b.danhSachIdHocPhan).length} | Slot mẫu: {safeArray(b.jsonSlots).length}
+                        </p>
+                        {b.batBuocChonCaBlock && (
+                          <span className="inline-block mt-2 px-3 py-1 text-[10px] bg-secondary-container text-on-secondary-container rounded-full font-bold">
+                            Bắt buộc chọn cả block
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => openEditBlock(b)} className="px-3 py-1.5 text-sm rounded-lg border border-[#dce2f7]">
+                          Sửa
+                        </button>
+                        <button type="button" onClick={() => deleteBlock(b.idTkbBlock)} className="px-3 py-1.5 text-sm rounded-lg bg-red-50 text-red-700">
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="col-span-12 lg:col-span-4 space-y-4">
+              <div className="bg-primary text-white p-6 rounded-2xl">
+                <h4 className="text-lg font-bold">Tình trạng phân bổ block</h4>
+                <div className="mt-4 space-y-2 text-sm">
+                  <p>Tổng block: {blockStats.total}</p>
+                  <p>Block bắt buộc: {blockStats.mandatory}</p>
+                  <p>Tổng học phần trong block: {blockStats.hocPhanCount}</p>
+                </div>
+              </div>
+              <button type="button" onClick={loadBlocks} className="w-full py-3 rounded-xl bg-white border border-[#dce2f7] font-semibold">
+                Làm mới danh sách block
+              </button>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'forecast' && (
+          <section className="space-y-6">
+            <div className="bg-white border border-surface-container rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <label className="text-sm font-semibold">
+                idChuongTrinhDaoTao
+                <input
+                  type="number"
+                  min={1}
+                  value={forecastForm.idChuongTrinhDaoTao}
+                  onChange={(e) => setForecastForm((v) => ({ ...v, idChuongTrinhDaoTao: e.target.value }))}
+                  className="mt-1 w-full border border-[#dce2f7] rounded-lg px-3 py-2"
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Sĩ số tối đa mặc định
+                <input
+                  type="number"
+                  min={1}
+                  value={forecastForm.siSoToiDaMacDinh}
+                  onChange={(e) => setForecastForm((v) => ({ ...v, siSoToiDaMacDinh: e.target.value }))}
+                  className="mt-1 w-full border border-[#dce2f7] rounded-lg px-3 py-2"
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Hệ số dự phòng
+                <input
+                  type="number"
+                  step="0.01"
+                  value={forecastForm.heSoDuPhong}
+                  onChange={(e) => setForecastForm((v) => ({ ...v, heSoDuPhong: e.target.value }))}
+                  className="mt-1 w-full border border-[#dce2f7] rounded-lg px-3 py-2"
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Tỷ lệ SV học lại
+                <input
+                  type="number"
+                  step="0.01"
+                  value={forecastForm.tyLeSvHocLaiThamGia}
+                  onChange={(e) => setForecastForm((v) => ({ ...v, tyLeSvHocLaiThamGia: e.target.value }))}
+                  className="mt-1 w-full border border-[#dce2f7] rounded-lg px-3 py-2"
+                />
+              </label>
+              <div className="md:col-span-2 lg:col-span-4 flex flex-wrap gap-3">
+                <button type="button" disabled={forecastBusy} onClick={runForecast} className="px-5 py-2.5 bg-primary text-white rounded-full font-bold disabled:opacity-50">
+                  {forecastBusy ? 'Đang chạy...' : 'Chạy forecast'}
                 </button>
-</div>
-{/*  Results Table Section  */}
-<div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-<div className="p-6 border-b border-surface-container flex flex-col md:flex-row justify-between items-center gap-4">
-<h2 className="text-xl font-bold">Bảng TKB dự kiến - Học kỳ II (2023-2024)</h2>
-<div className="flex items-center gap-2">
-<button className="p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors">
-<span className="material-symbols-outlined" data-icon="filter_list">filter_list</span>
-</button>
-<button className="p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors">
-<span className="material-symbols-outlined" data-icon="download">download</span>
-</button>
-<div className="flex bg-surface-container rounded-lg p-1">
-<button className="px-3 py-1 bg-white rounded shadow-sm text-xs font-bold">Xem theo Lớp</button>
-<button className="px-3 py-1 text-xs font-medium text-on-surface-variant">Xem theo Giảng viên</button>
-</div>
-</div>
-</div>
-<div className="overflow-x-auto">
-<table className="w-full text-left border-collapse">
-<thead>
-<tr className="bg-surface-container-low">
-<th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Mã Lớp / Môn Học</th>
-<th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Giảng Viên</th>
-<th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Thời Gian</th>
-<th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Phòng Học</th>
-<th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Trạng Thái AI</th>
-<th className="px-6 py-4"></th>
-</tr>
-</thead>
-<tbody className="divide-y divide-surface-container">
-<tr className="hover:bg-surface-container-lowest/50 transition-colors">
-<td className="px-6 py-5">
-<div className="font-bold text-on-surface">IT4402 - Trí tuệ nhân tạo</div>
-<div className="text-[10px] text-on-surface-variant">Nhóm 01 • 65 Sinh viên</div>
-</td>
-<td className="px-6 py-5">
-<div className="flex items-center gap-3">
-<div className="w-8 h-8 rounded-full bg-slate-200">
-<img alt="Avatar" className="w-full h-full rounded-full object-cover" data-alt="Portrait of a middle-aged male professor with glasses, academic attire, soft focus library background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9u18DBdyECBrFE8rrbkrxp2mn2HN4NYfNzE8MRwgzRVXWaneMB2VbWebhzUuByreA-LHT3_cLXcTZdcoo0SmiUMd9NBWFpcIQWo75athM1hoypd6nCAno0MHEieNS3nv7rbort6cY553La6NueNUbOuSBbzgWiq_15gO7vv4VQ850ZwJ-WepDkcsZ363gQKSqaznmRxkhW1MWVF1VZUc1EO6GCE0UEbq9KyMQUrUEBTeWcQGuk2gvjyaIwrV9LwPHKLYHnfdkexVn"/>
-</div>
-<span className="text-sm font-medium">GS. TS Nguyễn Văn An</span>
-</div>
-</td>
-<td className="px-6 py-5">
-<div className="text-sm">Thứ 2 (Tiết 1-3)</div>
-<div className="text-[10px] text-on-surface-variant">07:00 - 09:30</div>
-</td>
-<td className="px-6 py-5 font-bold text-primary">P.502 - Nhà D3</td>
-<td className="px-6 py-5">
-<span className="px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-[10px] font-bold">Tối Ưu 100%</span>
-</td>
-<td className="px-6 py-5 text-right">
-<button className="text-on-surface-variant hover:text-primary"><span className="material-symbols-outlined" data-icon="edit">edit</span></button>
-</td>
-</tr>
-<tr className="bg-error/5 hover:bg-error/10 transition-colors">
-<td className="px-6 py-5">
-<div className="font-bold text-error">ME3001 - Cơ học kỹ thuật</div>
-<div className="text-[10px] text-error">Nhóm 04 • 120 Sinh viên</div>
-</td>
-<td className="px-6 py-5">
-<div className="flex items-center gap-3">
-<div className="w-8 h-8 rounded-full bg-slate-200">
-<img alt="Avatar" className="w-full h-full rounded-full object-cover" data-alt="Female teacher in professional business attire, holding a tablet, bright classroom background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcfFepC5dVci1RbLZTvF0OGSS53QnbAVYMUhUasAcbhH77LP91uATesNDSTEnX6Umn8qDbRBJnkSq2ssOrRO1QvL6T3j0pOwIJU1MW-v68ipYdWpENIVleZi9pA0jbb747qrhT22mCp8nJkfP-ovI3kt_SN4WFr_cJPoZtEl-9TzAL-IsiS8xD7ANT-bqnLWJw9laD2zj8Gso15z7pMoOTB2joKcte-qfvtX7TW1ig7W-5o6i_QrIayANAHIt5AgNv33wpQp9OA23h"/>
-</div>
-<span className="text-sm font-medium text-error">ThS. Lê Thị Bình</span>
-</div>
-</td>
-<td className="px-6 py-5">
-<div className="text-sm text-error font-bold">Thứ 2 (Tiết 1-3)</div>
-<div className="text-[10px] text-error/80">Trùng lịch giảng dạy</div>
-</td>
-<td className="px-6 py-5">
-<div className="px-3 py-1 border border-error/20 bg-error-container text-on-error-container rounded text-[10px] font-bold inline-block">CHƯA PHÂN BỔ</div>
-</td>
-<td className="px-6 py-5">
-<span className="px-3 py-1 bg-error text-white rounded-full text-[10px] font-bold">XUNG ĐỘT</span>
-</td>
-<td className="px-6 py-5 text-right">
-<button className="text-error hover:scale-110 transition-transform"><span className="material-symbols-outlined" data-icon="priority_high">priority_high</span></button>
-</td>
-</tr>
-<tr className="hover:bg-surface-container-lowest/50 transition-colors">
-<td className="px-6 py-5">
-<div className="font-bold text-on-surface">FL2011 - Tiếng Anh Chuyên Ngành</div>
-<div className="text-[10px] text-on-surface-variant">Nhóm 12 • 35 Sinh viên</div>
-</td>
-<td className="px-6 py-5">
-<div className="flex items-center gap-3">
-<div className="w-8 h-8 rounded-full bg-slate-200">
-<img alt="Avatar" className="w-full h-full rounded-full object-cover" data-alt="Portrait of a young diverse lecturer smiling, modern academic setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwhmSUvmF3JYoamQiTIGvXuMYapV9ODK4NHoWjq-gt-QnXIRoc1W-3mghi6o3KBA8-rZK_zwOmWpYzURxaWzzV87AguCK1scqaxUaqh_c-BZUBuDWX1lH-CWv6_mMKdCrKPfBnB_ldxhqQIXvGHnDV21G_k5UirDuYOtYouI-vWiRir43jref-3YenXuDfDuKtivEOQal5zmSmam422U_-BfEZgjqgkLW_8ZIXV2L7LS319qSzq2qHVJhR8KrBKihVOXe71TIffaii"/>
-</div>
-<span className="text-sm font-medium">ThS. Trần Minh Tâm</span>
-</div>
-</td>
-<td className="px-6 py-5">
-<div className="text-sm">Thứ 3 (Tiết 4-6)</div>
-<div className="text-[10px] text-on-surface-variant">09:45 - 12:15</div>
-</td>
-<td className="px-6 py-5 font-bold text-primary">P.201 - Nhà B1</td>
-<td className="px-6 py-5">
-<span className="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed rounded-full text-[10px] font-bold">Hợp lý</span>
-</td>
-<td className="px-6 py-5 text-right">
-<button className="text-on-surface-variant hover:text-primary"><span className="material-symbols-outlined" data-icon="edit">edit</span></button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div className="p-4 bg-surface-container-low/50 flex justify-between items-center">
-<span className="text-xs text-on-surface-variant font-medium">Hiển thị 25 trên 1.450 bản ghi dự kiến</span>
-<div className="flex gap-1">
-<button className="w-8 h-8 flex items-center justify-center rounded bg-white shadow-sm hover:bg-primary-container hover:text-white transition-all"><span className="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span></button>
-<button className="w-8 h-8 flex items-center justify-center rounded bg-primary text-white shadow-md text-xs font-bold">1</button>
-<button className="w-8 h-8 flex items-center justify-center rounded bg-white shadow-sm hover:bg-primary-container hover:text-white transition-all text-xs font-bold">2</button>
-<button className="w-8 h-8 flex items-center justify-center rounded bg-white shadow-sm hover:bg-primary-container hover:text-white transition-all text-xs font-bold">3</button>
-<button className="w-8 h-8 flex items-center justify-center rounded bg-white shadow-sm hover:bg-primary-container hover:text-white transition-all"><span className="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span></button>
-</div>
-</div>
-</div>
-{/*  AI Insights Footer  */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-<div className="bg-primary/5 p-6 rounded-xl border-l-4 border-primary space-y-2">
-<p className="text-xs font-black text-primary uppercase tracking-tighter">Độ tin cậy thuật toán</p>
-<p className="text-2xl font-black text-on-surface">94.8%</p>
-<p className="text-[10px] text-on-surface-variant">Dựa trên 120 tiêu chí ràng buộc đã thiết lập.</p>
-</div>
-<div className="bg-secondary/5 p-6 rounded-xl border-l-4 border-secondary-container space-y-2">
-<p className="text-xs font-black text-secondary uppercase tracking-tighter">Tỷ lệ sử dụng phòng</p>
-<p className="text-2xl font-black text-on-surface">82.1%</p>
-<p className="text-[10px] text-on-surface-variant">Tăng 15% so với học kỳ trước.</p>
-</div>
-<div className="bg-tertiary/5 p-6 rounded-xl border-l-4 border-tertiary space-y-2">
-<p className="text-xs font-black text-tertiary uppercase tracking-tighter">Xung đột dự kiến</p>
-<p className="text-2xl font-black text-on-surface">12</p>
-<p className="text-[10px] text-on-surface-variant">Cần xử lý thủ công hoặc nới lỏng ràng buộc.</p>
-</div>
-</div>
-</div>
-</main>
+                <button type="button" disabled={!forecastRun?.idDuBaoVersion || forecastVersionBusy} onClick={() => runVersionAction('approve')} className="px-5 py-2.5 rounded-full bg-emerald-100 text-emerald-800 font-bold disabled:opacity-50">
+                  Approve version
+                </button>
+                <button type="button" disabled={!forecastRun?.idDuBaoVersion || forecastVersionBusy} onClick={() => runVersionAction('reject')} className="px-5 py-2.5 rounded-full bg-amber-100 text-amber-800 font-bold disabled:opacity-50">
+                  Reject version
+                </button>
+                <button type="button" disabled={!forecastRun?.idDuBaoVersion || forecastVersionBusy} onClick={() => runVersionAction('spawn-shell')} className="px-5 py-2.5 rounded-full bg-blue-100 text-blue-800 font-bold disabled:opacity-50">
+                  Spawn shell LHP
+                </button>
+              </div>
+            </div>
 
-    </>
+            {forecastRun && (
+              <div className="bg-white border border-surface-container rounded-2xl p-6 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div><p className="text-xs text-on-surface-variant">Version ID</p><p className="font-bold">{forecastRun.idDuBaoVersion}</p></div>
+                  <div><p className="text-xs text-on-surface-variant">Trạng thái</p><p className="font-bold">{forecastRun.trangThai}</p></div>
+                  <div><p className="text-xs text-on-surface-variant">Tổng SV dự kiến</p><p className="font-bold">{forecastRun.tongSoSvDuKien ?? 0}</p></div>
+                  <div><p className="text-xs text-on-surface-variant">Tổng lớp đề xuất</p><p className="font-bold">{forecastRun.tongSoLopDeXuat ?? 0}</p></div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-left">
+                    <thead className="bg-surface-container-low text-xs uppercase text-on-surface-variant">
+                      <tr>
+                        <th className="px-4 py-3">Mã HP</th>
+                        <th className="px-4 py-3">Tên học phần</th>
+                        <th className="px-4 py-3">HK gợi ý</th>
+                        <th className="px-4 py-3">On-track</th>
+                        <th className="px-4 py-3">Học lại</th>
+                        <th className="px-4 py-3">SV dự kiến</th>
+                        <th className="px-4 py-3">Lớp đề xuất</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container">
+                      {safeArray(forecastRun.lines).map((line) => (
+                        <tr key={`${line.idHocPhan}-${line.maHocPhan}`}>
+                          <td className="px-4 py-3 text-sm font-mono text-primary">{line.maHocPhan}</td>
+                          <td className="px-4 py-3 text-sm">{line.tenHocPhan}</td>
+                          <td className="px-4 py-3 text-sm">{line.hocKyGoiYCtdt ?? '-'}</td>
+                          <td className="px-4 py-3 text-sm">{line.soSvOnTrack ?? 0}</td>
+                          <td className="px-4 py-3 text-sm">{line.soSvHocLai ?? 0}</td>
+                          <td className="px-4 py-3 text-sm">{line.soSvDuKien ?? 0}</td>
+                          <td className="px-4 py-3 text-sm font-bold">{line.soLopDeXuat ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+
+      {blockPanelOpen && (
+        <div className="fixed inset-y-0 right-0 w-[520px] bg-white shadow-2xl z-50 border-l border-surface-container overflow-y-auto">
+          <div className="sticky top-0 bg-white px-6 py-5 flex justify-between items-center border-b border-surface-container">
+            <h2 className="text-2xl font-black text-primary">
+              {blockForm.idTkbBlock ? 'Cập nhật Block' : 'Thiết lập Block mới'}
+            </h2>
+            <button type="button" onClick={resetBlockForm} className="w-9 h-9 rounded-full hover:bg-surface-container">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div className="p-6 space-y-4">
+            <label className="block text-sm font-semibold">
+              Mã Block
+              <input
+                className="mt-1 w-full bg-surface-container-low rounded-xl py-2.5 px-3"
+                value={blockForm.maBlock}
+                onChange={(e) => setBlockForm((v) => ({ ...v, maBlock: e.target.value }))}
+              />
+            </label>
+            <label className="block text-sm font-semibold">
+              Tên Block
+              <input
+                className="mt-1 w-full bg-surface-container-low rounded-xl py-2.5 px-3"
+                value={blockForm.tenBlock}
+                onChange={(e) => setBlockForm((v) => ({ ...v, tenBlock: e.target.value }))}
+              />
+            </label>
+            <label className="block text-sm font-semibold">
+              JSON slots
+              <textarea
+                rows={6}
+                className="mt-1 w-full bg-surface-container-low rounded-xl py-2.5 px-3 font-mono text-xs"
+                value={blockForm.jsonSlotsText}
+                onChange={(e) => setBlockForm((v) => ({ ...v, jsonSlotsText: e.target.value }))}
+              />
+            </label>
+            <label className="block text-sm font-semibold">
+              Danh sách id học phần (phân tách dấu phẩy)
+              <input
+                className="mt-1 w-full bg-surface-container-low rounded-xl py-2.5 px-3"
+                value={blockForm.hocPhanIdsText}
+                onChange={(e) => setBlockForm((v) => ({ ...v, hocPhanIdsText: e.target.value }))}
+              />
+            </label>
+            <label className="flex items-center gap-3 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={blockForm.batBuocChonCaBlock}
+                onChange={(e) => setBlockForm((v) => ({ ...v, batBuocChonCaBlock: e.target.checked }))}
+              />
+              Bắt buộc chọn cả block
+            </label>
+            <div className="pt-2 flex gap-3">
+              <button
+                type="button"
+                disabled={savingBlock}
+                onClick={saveBlock}
+                className="flex-1 py-3 bg-primary text-white font-bold rounded-full disabled:opacity-50"
+              >
+                {savingBlock ? 'Đang lưu...' : blockForm.idTkbBlock ? 'Lưu cập nhật' : 'Xác nhận tạo Block'}
+              </button>
+              <button type="button" onClick={resetBlockForm} className="px-6 py-3 bg-surface-container text-on-surface-variant font-bold rounded-full">
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 };
 
