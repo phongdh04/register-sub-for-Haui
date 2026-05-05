@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Repository cho bảng Dang_Ky_Hoc_Phan.
@@ -229,4 +230,15 @@ public interface DangKyHocPhanRepository extends JpaRepository<DangKyHocPhan, Lo
             GROUP BY d.sinhVien.idSinhVien
             """)
     List<Object[]> findCumulativeGpaFactorsBySinhVienIds(@Param("svIds") Collection<Long> svIds);
+
+    @Query("""
+            SELECT DISTINCT d.sinhVien.idSinhVien
+            FROM DangKyHocPhan d
+            WHERE d.hocKy.idHocKy = :hocKyId
+              AND d.lopHocPhan.idLopHp IN :lhpIds
+              AND d.trangThaiDangKy = 'THANH_CONG'
+            """)
+    Set<Long> findDistinctSuccessSinhVienIdsByHocKyAndLopHpIds(
+            @Param("hocKyId") Long hocKyId,
+            @Param("lhpIds") Collection<Long> lhpIds);
 }
