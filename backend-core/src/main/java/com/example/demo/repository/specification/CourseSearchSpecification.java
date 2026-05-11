@@ -49,10 +49,9 @@ public class CourseSearchSpecification {
             Join<Object, Object> hocKyJoin     = root.join("hocKy",     JoinType.INNER);
             Join<Object, Object> giangVienJoin = root.join("giangVien", JoinType.LEFT);
 
-            // ── Distinct để tránh duplicate khi JOIN nhiều bảng ────
-            if (query != null) {
-                query.distinct(true);
-            }
+            // Không bật DISTINCT ở đây vì PostgreSQL yêu cầu mọi cột ORDER BY phải nằm
+            // trong select list khi DISTINCT + pagination. Với model hiện tại (toàn
+            // bộ join đều many-to-one), mỗi LopHocPhan chỉ ra 1 dòng nên không phát sinh duplicate.
 
             // ── FILTER 1: Keyword (tìm theo tên môn HOẶC mã môn) ──
             if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
@@ -66,6 +65,18 @@ public class CourseSearchSpecification {
             // ── FILTER 2: Học Kỳ (quan trọng nhất, có INDEX) ──────
             if (request.getIdHocKy() != null) {
                 predicates.add(cb.equal(hocKyJoin.get("idHocKy"), request.getIdHocKy()));
+            }
+
+            if (request.getIdHocPhan() != null) {
+                predicates.add(cb.equal(hocPhanJoin.get("idHocPhan"), request.getIdHocPhan()));
+            }
+
+            if (request.getAllowedHocPhanIds() != null) {
+                if (request.getAllowedHocPhanIds().isEmpty()) {
+                    predicates.add(cb.disjunction());
+                } else {
+                    predicates.add(hocPhanJoin.get("idHocPhan").in(request.getAllowedHocPhanIds()));
+                }
             }
 
             // ── FILTER 3: Số tín chỉ ──────────────────────────────

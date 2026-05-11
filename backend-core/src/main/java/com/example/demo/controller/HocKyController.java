@@ -26,7 +26,6 @@ public class HocKyController {
     private final IHocKyService hocKyService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<HocKyResponse>> getAll() {
         return ResponseEntity.ok(hocKyService.getAll());
     }

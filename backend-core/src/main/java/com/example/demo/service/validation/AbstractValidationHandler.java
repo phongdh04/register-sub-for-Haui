@@ -33,6 +33,14 @@ public abstract class AbstractValidationHandler implements IRegistrationValidati
     }
 
     /**
+     * Chỉ chạy rule của handler hiện tại, KHÔNG chuyển tiếp chain.
+     * Phục vụ kịch bản PRE-only validation (đồ án): bỏ qua một số handler nặng.
+     */
+    public final void validateSelfOnly(RegistrationMessageDto msg) throws RegistrationValidationException {
+        doValidate(msg);
+    }
+
+    /**
      * Mỗi Handler con implement method này để thực hiện 1 rule validate duy nhất.
      * @throws DangKyValidationException nếu phát hiện vi phạm.
      */

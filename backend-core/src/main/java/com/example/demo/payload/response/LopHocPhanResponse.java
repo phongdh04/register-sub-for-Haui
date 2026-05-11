@@ -35,6 +35,12 @@ public class LopHocPhanResponse {
     private BigDecimal hocPhi;
     private String trangThai;
 
+    /** Sprint 3 — {@code SHELL} | {@code SCHEDULED} | {@code PUBLISHED}; cần cho màn admin xuất bản lớp. */
+    private String statusPublish;
+
+    /** Optimistic lock (Sprint 3). */
+    private Long version;
+
     private Long idPhongHoc;
     private String maPhongHoc;
 

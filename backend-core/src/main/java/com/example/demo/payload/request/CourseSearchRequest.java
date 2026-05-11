@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 /**
  * DTO chứa các tiêu chí lọc môn học của Sinh Viên.
  * Builder Pattern: Client ghép các filter tùy ý, không cần điền đủ mọi field.
@@ -23,6 +25,15 @@ public class CourseSearchRequest {
 
     /** Lọc theo ID học kỳ đang mở (bắt buộc có để tránh load toàn bộ lịch sử) */
     private Long idHocKy;
+
+    /** Lọc theo học phần (lớp mở của đúng môn) — dùng khi ghép PRE intent → đăng ký chính thức. */
+    private Long idHocPhan;
+
+    /**
+     * Khi không null: chỉ trả các lớp thuộc một trong các học phần này (server gán cho ROLE_STUDENT).
+     * Rỗng → không có môn nào khớp (truy vấn trả về không dòng).
+     */
+    private List<Long> allowedHocPhanIds;
 
     /** Lọc theo ID Khoa (Khoa Công nghệ TT, Khoa Kinh tế...) */
     private Long idKhoa;

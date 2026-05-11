@@ -4,7 +4,9 @@ import com.example.demo.domain.entity.DangKyHocPhan;
 import com.example.demo.domain.entity.GioHangDangKy;
 import com.example.demo.domain.entity.HocKy;
 import com.example.demo.domain.entity.HocPhan;
+import com.example.demo.domain.entity.Lop;
 import com.example.demo.domain.entity.LopHocPhan;
+import com.example.demo.domain.entity.NganhDaoTao;
 import com.example.demo.domain.entity.SinhVien;
 import com.example.demo.domain.entity.TkbBlock;
 import com.example.demo.domain.entity.User;
@@ -67,7 +69,7 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
         SinhVien sv = sinhVienRepository.findByTaiKhoan_Id(user.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Tài khoản chưa liên kết hồ sơ sinh viên."));
         HocKy hk = resolveHocKy(request.getHocKyId());
-        registrationScheduleChecker.requirePreRegistrationOpen(hk);
+        requirePrePhaseForStudent(sv, hk);
 
         LopHocPhan lhp = lopHocPhanRepository.findById(request.getIdLopHp())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lớp học phần: " + request.getIdLopHp()));
@@ -111,7 +113,7 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
         if (!Objects.equals(block.getHocKy().getIdHocKy(), hk.getIdHocKy())) {
             throw new IllegalArgumentException("Block không thuộc học kỳ đang chọn.");
         }
-        registrationScheduleChecker.requirePreRegistrationOpen(hk);
+        requirePrePhaseForStudent(sv, hk);
 
         List<LopHocPhan> blockLops = lopHocPhanRepository.findByTkbBlock_IdTkbBlock(block.getIdTkbBlock());
         blockLops = blockLops.stream()
@@ -146,6 +148,14 @@ public class PreRegistrationCartServiceImpl implements IPreRegistrationCartServi
         GioHangDangKy g = gioHangDangKyRepository.findByIdGioHangAndSinhVien_IdSinhVien(idGioHang, sv.getIdSinhVien())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy dòng giỏ hàng."));
         gioHangDangKyRepository.delete(g);
+    }
+
+    private void requirePrePhaseForStudent(SinhVien sv, HocKy hk) {
+        Lop lop = sv != null ? sv.getLop() : null;
+        Integer namNhapHoc = lop != null ? lop.getNamNhapHoc() : null;
+        NganhDaoTao nganh = lop != null ? lop.getNganhDaoTao() : null;
+        Long idNganh = nganh != null ? nganh.getIdNganh() : null;
+        registrationScheduleChecker.requirePreRegistrationOpenFor(hk, namNhapHoc, idNganh);
     }
 
     private HocKy resolveHocKy(Long hocKyId) {

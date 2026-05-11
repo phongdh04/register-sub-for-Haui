@@ -1,6 +1,7 @@
 package com.example.demo.repository;
 
 import com.example.demo.domain.entity.LopHocPhan;
+import com.example.demo.domain.enums.LopHocPhanPublishStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -26,6 +27,20 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
     Optional<LopHocPhan> findByMaLopHp(String maLopHp);
 
     List<LopHocPhan> findByHocKy_IdHocKy(Long idHocKy);
+
+    /**
+     * Danh sách lớp theo học kỳ kèm học phần/GV (tránh lazy ngoài session — dùng cho admin + public list).
+     */
+    @Query("""
+            SELECT l FROM LopHocPhan l
+            JOIN FETCH l.hocPhan hp
+            JOIN FETCH l.hocKy hk
+            LEFT JOIN FETCH l.giangVien gv
+            LEFT JOIN FETCH l.phongHoc ph
+            WHERE hk.idHocKy = :idHocKy
+            ORDER BY l.maLopHp ASC
+            """)
+    List<LopHocPhan> findAllByHocKy_IdHocKyWithAssociations(@Param("idHocKy") Long idHocKy);
     List<LopHocPhan> findByTkbBlock_IdTkbBlock(Long idTkbBlock);
 
     /** Eager các FK cần cho snapshot admin (BK-TKB-011/012). */
@@ -104,4 +119,38 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
             ORDER BY lhp.siSoThucTe DESC, lhp.maLopHp ASC
             """)
     List<Object[]> topClassesByHeadcountForHocKy(@Param("hkId") Long hkId, Pageable pageable);
+
+    /**
+     * Sprint 3 — list lớp theo học kỳ + status_publish (cho admin bulk-publish workflow).
+     * Có thể lọc thêm theo cohort (nam_nhap_hoc của ngành đào tạo của các sinh viên đăng ký
+     * không xác định trên LHP — cohort gắn vào LHP qua các quyết định mở lớp ở pha B).
+     * Hiện tại bulk filter dựa trên hocKy + status; cohort filter dùng tham số JPA cho
+     * tương lai.
+     */
+    @Query("""
+            SELECT l FROM LopHocPhan l
+            JOIN FETCH l.hocPhan hp
+            LEFT JOIN FETCH l.giangVien gv
+            WHERE l.hocKy.idHocKy = :hkId
+              AND (:status IS NULL OR l.statusPublish = :status)
+            ORDER BY hp.maHocPhan ASC, l.maLopHp ASC
+            """)
+    List<LopHocPhan> findByHocKyAndStatusPublish(
+            @Param("hkId") Long hocKyId,
+            @Param("status") LopHocPhanPublishStatus status);
+
+    /**
+     * Sprint 6 — fill-rate dashboard. Chỉ trả về lớp đã PUBLISHED và có siSoToiDa > 0.
+     * {@code Object[] {idLopHp, maLopHp, maHocPhan, tenHocPhan, siSoToiDa, siSoThucTe}}.
+     */
+    @Query("""
+            SELECT l.idLopHp, l.maLopHp, hp.maHocPhan, hp.tenHocPhan,
+                   l.siSoToiDa, l.siSoThucTe
+            FROM LopHocPhan l JOIN l.hocPhan hp
+            WHERE l.hocKy.idHocKy = :hkId
+              AND l.statusPublish = com.example.demo.domain.enums.LopHocPhanPublishStatus.PUBLISHED
+              AND l.siSoToiDa > 0
+            ORDER BY (1.0 * l.siSoThucTe / l.siSoToiDa) DESC, l.maLopHp ASC
+            """)
+    List<Object[]> findFillRateRowsForHocKy(@Param("hkId") Long hkId);
 }

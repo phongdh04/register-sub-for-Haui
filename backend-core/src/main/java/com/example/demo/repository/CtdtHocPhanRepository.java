@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface CtdtHocPhanRepository extends JpaRepository<CtdtHocPhan, Long> {
 
+    boolean existsByChuongTrinhDaoTao_IdCtdtAndHocPhan_IdHocPhan(Long idCtdt, Long idHocPhan);
+
     @Query("""
             SELECT m FROM CtdtHocPhan m
             JOIN FETCH m.hocPhan hp

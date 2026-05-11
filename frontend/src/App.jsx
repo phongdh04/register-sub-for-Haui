@@ -7,6 +7,7 @@ import TraCuHSCNhnThTcOnline from './pages/TraCuHSCNhnThTcOnline';
 import CyKhungChngTrnhDegreeAuditRoadmap from './pages/CyKhungChngTrnhDegreeAuditRoadmap';
 import KimTraTinHcTpTranscriptDashboard from './pages/KimTraTinHcTpTranscriptDashboard';
 import TnhNngTrcGiGPreRegistrationGiLp from './pages/TnhNngTrcGiGPreRegistrationGiLp';
+import StudentRegistrationPage from './pages/StudentRegistrationPage';
 import TnhNngLcMnnhCao from './pages/TnhNngLcMnnhCao';
 import ThutTonLogicngChtValidationRulesEngine from './pages/ThutTonLogicngChtValidationRulesEngine';
 import VSinhVinStudentWallet from './pages/VSinhVinStudentWallet';
@@ -15,12 +16,18 @@ import DchVThiKhaBiuThngMinh from './pages/DchVThiKhaBiuThngMinh';
 import LchThinhGiGv from './pages/LchThinhGiGv';
 import StudentLayout from './layouts/StudentLayout';
 import SetupCuHnhGiVngTrafficSplittingQueueControl from './pages/SetupCuHnhGiVngTrafficSplittingQueueControl';
+import AdminHocKyScheduleConfigPage from './pages/AdminHocKyScheduleConfigPage';
 import QunLDanhMcKhungMLpDataMaster from './pages/QunLDanhMcKhungMLpDataMaster';
 import GimStTiChnhKTonAdmin from './pages/GimStTiChnhKTonAdmin';
 import BoCoPhnTchAnalytics from './pages/BoCoPhnTchAnalytics';
 import HThngPhnQuynaTngRbacRoleBasedAccessControl from './pages/HThngPhnQuynaTngRbacRoleBasedAccessControl';
 import XcThcaYuTMfa2FaVChKS from './pages/XcThcaYuTMfa2FaVChKS';
 import LchSNhtKDuChnAuditTrailsLogging from './pages/LchSNhtKDuChnAuditTrailsLogging';
+import AdminRegistrationWindowsPage from './pages/AdminRegistrationWindowsPage';
+import AdminClassPublishPage from './pages/AdminClassPublishPage';
+import AdminPreRegistrationDemandPage from './pages/AdminPreRegistrationDemandPage';
+import AdminTimetableProjectionToolsPage from './pages/AdminTimetableProjectionToolsPage';
+import AdminRegistrationMonitoringPage from './pages/AdminRegistrationMonitoringPage';
 import AdminLayout from './layouts/AdminLayout';
 import QunLLpGingDyimDanh from './pages/QunLLpGingDyimDanh';
 import MngLiNhpQunLimGradingSystem from './pages/MngLiNhpQunLimGradingSystem';
@@ -51,12 +58,16 @@ function App() {
           <Route path="tracuhscnhnthtconline" element={<TraCuHSCNhnThTcOnline />} />
           <Route path="cykhungchngtrnhdegreeauditroadmap" element={<CyKhungChngTrnhDegreeAuditRoadmap />} />
           <Route path="kimtratinhctptranscriptdashboard" element={<KimTraTinHcTpTranscriptDashboard />} />
-          <Route path="tnhnngtrcgigpreregistrationgilp" element={<TnhNngTrcGiGPreRegistrationGiLp />} />
+          <Route path="registration" element={<StudentRegistrationPage />} />
+          <Route path="pre-registration" element={<TnhNngTrcGiGPreRegistrationGiLp />} />
+          <Route path="tnhnngtrcgigpreregistrationgilp" element={<Navigate to="/student/pre-registration" replace />} />
+          <Route path="intents-legacy" element={<Navigate to="/student/pre-registration" replace />} />
           <Route path="tnhnnglcmnnhcao" element={<TnhNngLcMnnhCao />} />
           <Route path="thuttonlogicngchtvalidationrulesengine" element={<ThutTonLogicngChtValidationRulesEngine />} />
           <Route path="vsinhvinstudentwallet" element={<VSinhVinStudentWallet />} />
           <Route path="thanhtonqrcodeopenapi" element={<ThanhTonQrCodeOpenApi />} />
           <Route path="dchvthikhabiuthngminh" element={<DchVThiKhaBiuThngMinh />} />
+          <Route path="timetable" element={<DchVThiKhaBiuThngMinh />} />
           <Route path="lchthinhgigv" element={<LchThinhGiGv />} />
         </Route>
         <Route
@@ -69,12 +80,18 @@ function App() {
         >
           <Route index element={<Navigate to="/admin/bocophntchanalytics" replace />} />
           <Route path="setupcuhnhgivngtrafficsplittingqueuecontrol" element={<SetupCuHnhGiVngTrafficSplittingQueueControl />} />
+          <Route path="lichdangkyhockyconfig" element={<AdminHocKyScheduleConfigPage />} />
           <Route path="qunldanhmckhungmlpdatamaster" element={<QunLDanhMcKhungMLpDataMaster />} />
           <Route path="gimsttichnhktonadmin" element={<GimStTiChnhKTonAdmin />} />
           <Route path="bocophntchanalytics" element={<BoCoPhnTchAnalytics />} />
           <Route path="hthngphnquynatngrbacrolebasedaccesscontrol" element={<HThngPhnQuynaTngRbacRoleBasedAccessControl />} />
           <Route path="xcthcayutmfa2favchks" element={<XcThcaYuTMfa2FaVChKS />} />
           <Route path="lchsnhtkduchnaudittrailslogging" element={<LchSNhtKDuChnAuditTrailsLogging />} />
+          <Route path="registration-windows" element={<AdminRegistrationWindowsPage />} />
+          <Route path="pre-registration-demand" element={<AdminPreRegistrationDemandPage />} />
+          <Route path="class-publish" element={<AdminClassPublishPage />} />
+          <Route path="timetable-projection-tools" element={<AdminTimetableProjectionToolsPage />} />
+          <Route path="registration-monitoring" element={<AdminRegistrationMonitoringPage />} />
         </Route>
         <Route
           path="/teacher"

@@ -49,7 +49,7 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
     @Override
     @Transactional(readOnly = true)
     public List<LopHocPhanResponse> getAllByHocKy(Long idHocKy) {
-        return lopHocPhanRepository.findByHocKy_IdHocKy(idHocKy)
+        return lopHocPhanRepository.findAllByHocKy_IdHocKyWithAssociations(idHocKy)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -214,6 +214,8 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
                 .siSoConLai(conLai)
                 .hocPhi(lhp.getHocPhi())
                 .trangThai(lhp.getTrangThai())
+                .statusPublish(lhp.getStatusPublish() != null ? lhp.getStatusPublish().name() : null)
+                .version(lhp.getVersion())
                 .idPhongHoc(phong != null ? phong.getIdPhong() : null)
                 .maPhongHoc(phong != null ? phong.getMaPhong() : null)
                 .idTkbBlock(tb != null ? tb.getIdTkbBlock() : null)

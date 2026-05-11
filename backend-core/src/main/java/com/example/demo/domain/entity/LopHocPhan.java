@@ -1,5 +1,6 @@
 package com.example.demo.domain.entity;
 
+import com.example.demo.domain.enums.LopHocPhanPublishStatus;
 import com.example.demo.domain.support.TkbThuSurrogate;
 
 import jakarta.persistence.*;
@@ -88,6 +89,27 @@ public class LopHocPhan {
     @Column(name = "trang_thai", length = 20)
     @Builder.Default
     private String trangThai = "DANG_MO";
+
+    /**
+     * Sprint 3 — vòng đời công bố lớp.
+     * <ul>
+     *   <li>{@code SHELL}: vừa sinh từ forecast spawn-shell, chưa có lịch + GV.</li>
+     *   <li>{@code SCHEDULED}: đã xếp lịch + gán GV, qua conflict-check.</li>
+     *   <li>{@code PUBLISHED}: công bố cho pha đăng ký chính thức.</li>
+     * </ul>
+     * Default {@code PUBLISHED} cho data cũ (back-compat) — class mới sinh từ spawn-shell
+     * phải set thủ công về {@code SHELL}.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_publish", length = 16, nullable = false)
+    @Builder.Default
+    private LopHocPhanPublishStatus statusPublish = LopHocPhanPublishStatus.PUBLISHED;
+
+    /** Sprint 3 — optimistic lock cho các luồng admin batch (publish, patch slot, gán GV). */
+    @Version
+    @Column(name = "version")
+    @Builder.Default
+    private Long version = 0L;
 
     /**
      * JSONB: Lịch học pre-calculated.

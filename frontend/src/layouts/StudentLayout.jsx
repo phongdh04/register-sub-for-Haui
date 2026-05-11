@@ -7,12 +7,13 @@ const studentNav = [
   { to: '/student/tracuhscnhnthtconline', label: 'Hồ sơ cá nhân', icon: 'badge' },
   { to: '/student/cykhungchngtrnhdegreeauditroadmap', label: 'Degree Audit', icon: 'account_tree' },
   { to: '/student/kimtratinhctptranscriptdashboard', label: 'Transcript', icon: 'school' },
-  { to: '/student/tnhnngtrcgigpreregistrationgilp', label: 'Pre-registration', icon: 'shopping_cart' },
+  { to: '/student/registration', label: 'Đăng ký học phần', icon: 'how_to_reg' },
+  { to: '/student/pre-registration', label: 'Đăng ký dự kiến (PRE)', icon: 'edit_calendar' },
   { to: '/student/tnhnnglcmnnhcao', label: 'Lọc môn học', icon: 'filter_alt' },
   { to: '/student/thuttonlogicngchtvalidationrulesengine', label: 'Validation Rules', icon: 'rule' },
   { to: '/student/vsinhvinstudentwallet', label: 'Ví sinh viên', icon: 'wallet' },
   { to: '/student/thanhtonqrcodeopenapi', label: 'Thanh toán QR', icon: 'qr_code_2' },
-  { to: '/student/dchvthikhabiuthngminh', label: 'Thời khóa biểu', icon: 'calendar_month' },
+  { to: '/student/timetable', label: 'Thời khóa biểu', icon: 'calendar_month' },
   { to: '/student/lchthinhgigv', label: 'Lịch thi & Đánh giá GV', icon: 'event' }
 ];
 

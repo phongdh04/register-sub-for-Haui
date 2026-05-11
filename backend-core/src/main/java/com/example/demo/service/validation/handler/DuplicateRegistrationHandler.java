@@ -1,6 +1,7 @@
 package com.example.demo.service.validation.handler;
 
 import com.example.demo.domain.entity.LopHocPhan;
+import com.example.demo.domain.enums.LopHocPhanPublishStatus;
 import com.example.demo.payload.request.RegistrationMessageDto;
 import com.example.demo.repository.DangKyHocPhanRepository;
 import com.example.demo.repository.LopHocPhanRepository;
@@ -43,6 +44,16 @@ public class DuplicateRegistrationHandler extends AbstractValidationHandler {
                     RegistrationValidationException.LOP_KHONG_TON_TAI,
                     String.format("[TraceID=%s] Lớp %s đang ở trạng thái %s, không thể đăng ký.",
                             msg.getTraceId(), lop.getMaLopHp(), lop.getTrangThai()));
+        }
+
+        // Sprint 3 — chỉ cho phép đăng ký lớp đã PUBLISHED.
+        // Data legacy đã có default PUBLISHED (back-compat).
+        if (lop.getStatusPublish() != null
+                && lop.getStatusPublish() != LopHocPhanPublishStatus.PUBLISHED) {
+            throw new RegistrationValidationException(
+                    RegistrationValidationException.LOP_KHONG_TON_TAI,
+                    String.format("[TraceID=%s] Lớp %s chưa được công bố (statusPublish=%s).",
+                            msg.getTraceId(), lop.getMaLopHp(), lop.getStatusPublish()));
         }
 
         // ── Safety check sĩ số phía DB (Redis đã check trước nhưng cần double-check) ──

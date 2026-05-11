@@ -5,6 +5,7 @@ import com.example.demo.domain.entity.DuBaoMoLopVersion;
 import com.example.demo.domain.entity.HocKy;
 import com.example.demo.domain.entity.HocPhan;
 import com.example.demo.domain.entity.LopHocPhan;
+import com.example.demo.domain.enums.LopHocPhanPublishStatus;
 import com.example.demo.payload.response.ForecastMoLopVersionStatusResponse;
 import com.example.demo.payload.response.ForecastShellSpawnResponse;
 import com.example.demo.repository.DuBaoMoLopLineRepository;
@@ -99,6 +100,7 @@ public class ForecastMoLopWorkflowServiceImpl implements IForecastMoLopWorkflowS
                         .siSoThucTe(0)
                         .hocPhi(null)
                         .trangThai("CHUA_MO")
+                        .statusPublish(LopHocPhanPublishStatus.SHELL)
                         .thoiKhoaBieuJson(List.of())
                         .build();
                 lopHocPhongDualWriteService.synchronize(shell);

@@ -1,414 +1,910 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import { API_BASE_URL, authHeaders } from '../config/api';
-
-const formatVnd = (n) => {
-  if (n == null || n === '') return '—';
-  const x = Number(n);
-  if (!Number.isFinite(x)) return '—';
-  return new Intl.NumberFormat('vi-VN').format(x) + ' ₫';
-};
-
-const formatIso = (iso) => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('vi-VN');
-};
+import { rememberStudentHocKy, resolveInitialStudentHocKyFromRows } from '../utils/studentSemesterPersistence';
 
 const safeArray = (x) => (Array.isArray(x) ? x : []);
 
-const firstSlotLabel = (slots) => {
-  const data = safeArray(slots);
-  if (!data.length) return 'Chưa có TKB';
-  const s = data[0] || {};
-  const thu = s.thu || '?';
-  const tietBd = s.tiet_bat_dau || s.tietBatDau || '?';
-  const tietKt = s.tiet_ket_thuc || s.tietKetThuc || '?';
-  return `Thứ ${thu} (${tietBd}-${tietKt})`;
+async function parseBody(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function errMessage(body, fallback) {
+  if (!body || typeof body !== 'object') return fallback;
+  if (body.message) return String(body.message);
+  if (Array.isArray(body.errors) && body.errors[0]?.defaultMessage) {
+    return String(body.errors[0].defaultMessage);
+  }
+  return fallback;
+}
+
+const prettyKhoi = (khoi) => {
+  switch (khoi) {
+    case 'DAI_CUONG':
+      return 'Đại cương';
+    case 'CO_SO_NGANH':
+      return 'Cơ sở ngành';
+    case 'CHUYEN_NGANH':
+      return 'Chuyên ngành';
+    case 'TU_CHON':
+      return 'Tự chọn';
+    default:
+      return khoi || 'Khối';
+  }
 };
 
+/** Trang PRE: nguyện vọng đăng ký dự kiến — API /api/v1/pre-registrations/intents */
 const TnhNngTrcGiGPreRegistrationGiLp = () => {
+  const location = useLocation();
   const [hocKys, setHocKys] = useState([]);
-  const [cart, setCart] = useState(null);
+  const [hocKyId, setHocKyId] = useState('');
+  const [intents, setIntents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [hocKyFilter, setHocKyFilter] = useState('');
-  const [addBusyId, setAddBusyId] = useState(null);
-  const [msg, setMsg] = useState('');
-  const [suggest, setSuggest] = useState(null);
-  const [suggestLoading, setSuggestLoading] = useState(false);
-  const [suggestErr, setSuggestErr] = useState('');
-  const [blockModalOpen, setBlockModalOpen] = useState(false);
-  const [blockIdInput, setBlockIdInput] = useState('');
-  const [blockBusy, setBlockBusy] = useState(false);
+  const [loadErr, setLoadErr] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  /** Mặc định khóa: chỉ mở thao tác sau khi window-status báo PRE đang mở (tránh race khi chưa tải xong đã nhấp Thêm). */
+  const [preLocked, setPreLocked] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  /** Ghi nhận môn được chọn từ lưới CTĐT (ẩn select chung). */
+  const [presetCurriculumCourse, setPresetCurriculumCourse] = useState(null);
+  const [degreeAudit, setDegreeAudit] = useState(null);
+  const [degreeLoading, setDegreeLoading] = useState(true);
+  const [degreeErr, setDegreeErr] = useState('');
+  const [hideCompletedCourses, setHideCompletedCourses] = useState(false);
+  const [courseOptions, setCourseOptions] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [formIdHocPhan, setFormIdHocPhan] = useState('');
+  const [formPriority, setFormPriority] = useState(1);
+  const [formGhiChu, setFormGhiChu] = useState('');
+  const toastTimerRef = useRef(null);
 
-  const fetchCart = useCallback(async (hocKyId) => {
-    const qs = hocKyId ? `?hocKyId=${encodeURIComponent(hocKyId)}` : '';
-    const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/me${qs}`, {
-      headers: authHeaders()
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(body.message || 'Không tải được giỏ đăng ký trước.');
+  const showToast = (kind, title, detail) => {
+    setToast({ kind, title, detail });
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 5200);
+  };
+
+  const tenHocKyChon = useMemo(() => {
+    const id = Number(hocKyId);
+    const hk = hocKys.find((h) => Number(h.idHocKy ?? h.id) === id);
+    return hk?.tenHocKy || hk?.ten || '—';
+  }, [hocKys, hocKyId]);
+
+  const intentIds = useMemo(() => new Set(intents.map((i) => Number(i.idHocPhan))), [intents]);
+
+  const tongTinChi = useMemo(
+    () => intents.reduce((s, i) => s + (Number(i.soTinChi) || 0), 0),
+    [intents]
+  );
+
+  /** Học phần trong CTĐT của ngành SV (Flatten + sort: kỳ gợi ý → mã). */
+  const curriculumRows = useMemo(() => {
+    if (!degreeAudit?.khois) return [];
+    const rows = [];
+    for (const k of degreeAudit.khois) {
+      const khoi = k.khoiKienThuc ?? '';
+      for (const c of safeArray(k.hocPhans)) {
+        if (c?.idHocPhan == null) continue;
+        rows.push({
+          ...c,
+          khoiKienThuc: khoi
+        });
+      }
     }
-    return body;
+    rows.sort((a, b) => {
+      const ka = a.hocKyGoiY != null ? Number(a.hocKyGoiY) : 999;
+      const kb = b.hocKyGoiY != null ? Number(b.hocKyGoiY) : 999;
+      if (ka !== kb) return ka - kb;
+      return String(a.maHocPhan || '').localeCompare(String(b.maHocPhan || ''));
+    });
+    return rows;
+  }, [degreeAudit]);
+
+  const visibleCurriculumRows = useMemo(
+    () => (hideCompletedCourses ? curriculumRows.filter((r) => !r.daHoanThanh) : curriculumRows),
+    [curriculumRows, hideCompletedCourses]
+  );
+
+  const loadDegreeAudit = useCallback(async () => {
+    setDegreeLoading(true);
+    setDegreeErr('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/degree-audit/me`, { headers: authHeaders() });
+      const body = await parseBody(res);
+      if (!res.ok) throw new Error(errMessage(body, 'Không tải được chương trình đào tạo theo ngành.'));
+      setDegreeAudit(body);
+    } catch (e) {
+      setDegreeErr(e.message || 'Lỗi CTĐT.');
+      setDegreeAudit(null);
+    } finally {
+      setDegreeLoading(false);
+    }
   }, []);
 
   const loadHocKy = useCallback(async () => {
     const res = await fetch(`${API_BASE_URL}/api/hoc-ky`, { headers: authHeaders() });
-    const body = await res.json().catch(() => []);
-    if (!res.ok) throw new Error(body.message || 'Không tải được danh sách học kỳ.');
+    const body = await parseBody(res);
+    if (!res.ok) throw new Error(errMessage(body, 'Không tải được danh sách học kỳ.'));
     const rows = safeArray(body);
     setHocKys(rows);
-    if (!hocKyFilter && rows.length > 0) {
-      setHocKyFilter(String(rows[0].idHocKy));
-    }
-  }, [hocKyFilter]);
+    setHocKyId((cur) => resolveInitialStudentHocKyFromRows(rows, cur));
+  }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    setMsg('');
-    try {
-      const hk = hocKyFilter.trim() || null;
-      const data = await fetchCart(hk);
-      setCart(data);
-    } catch (e) {
-      setError(e.message || 'Lỗi tải dữ liệu.');
-      setCart(null);
-    } finally {
-      setLoading(false);
+  const loadIntents = useCallback(async () => {
+    if (!hocKyId) {
+      setIntents([]);
+      return;
     }
-  }, [fetchCart, hocKyFilter]);
+    const qs = `?hocKyId=${encodeURIComponent(hocKyId)}`;
+    const res = await fetch(`${API_BASE_URL}/api/v1/pre-registrations/intents/me${qs}`, {
+      headers: authHeaders()
+    });
+    const body = await parseBody(res);
+    if (!res.ok) throw new Error(errMessage(body, 'Không tải được nguyện vọng.'));
+    const rows = safeArray(body);
+    rows.sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+    setIntents(rows);
+  }, [hocKyId]);
+
+  const loadCoursesForModal = useCallback(async () => {
+    if (!hocKyId) return;
+    setCoursesLoading(true);
+    try {
+      const qs = new URLSearchParams({
+        idHocKy: hocKyId,
+        page: '0',
+        size: '100',
+        sortBy: 'tenHocPhan',
+        sortDir: 'ASC'
+      });
+      const res = await fetch(`${API_BASE_URL}/api/v1/courses?${qs.toString()}`, {
+        headers: authHeaders()
+      });
+      const body = await parseBody(res);
+      if (!res.ok) throw new Error(errMessage(body, 'Không tải danh sách học phần.'));
+      const raw = body.content ?? body;
+      const list = safeArray(raw);
+      const byHp = new Map();
+      for (const row of list) {
+        const hid = row.idHocPhan;
+        if (hid != null && !byHp.has(hid)) byHp.set(hid, row);
+      }
+      setCourseOptions([...byHp.values()]);
+    } catch (e) {
+      showToast('error', 'Lỗi', e.message || 'Không tải học phần.');
+      setCourseOptions([]);
+    } finally {
+      setCoursesLoading(false);
+    }
+  }, [hocKyId]);
 
   useEffect(() => {
     (async () => {
       try {
         await loadHocKy();
+        await loadDegreeAudit();
       } catch (e) {
-        setError(e.message || 'Lỗi tải học kỳ.');
+        setLoadErr(e.message || 'Lỗi học kỳ.');
       }
     })();
-  }, [loadHocKy]);
+  }, [loadHocKy, loadDegreeAudit]);
 
   useEffect(() => {
-    load();
-  }, [load]);
-
-  const addItemById = async (idLopHp) => {
-    const id = Number(idLopHp);
-    if (!Number.isFinite(id) || id <= 0) return;
-    setAddBusyId(id);
-    setMsg('');
-    setError('');
-    try {
-      const payload = { idLopHp: id };
-      const hk = hocKyFilter.trim();
-      if (hk) payload.hocKyId = Number(hk);
-      const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/items`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(body.message || 'Không thêm được lớp.');
-      }
-      await load();
-      setMsg('Đã thêm học phần vào giỏ.');
-    } catch (e) {
-      setError(e.message || 'Lỗi thêm lớp.');
-    } finally {
-      setAddBusyId(null);
-    }
-  };
-
-  const deleteCartLine = async (idGioHang) => {
-    const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/items/${idGioHang}`, {
-      method: 'DELETE',
-      headers: authHeaders()
-    });
-    if (!res.ok && res.status !== 204) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || 'Không xóa được.');
-    }
-  };
-
-  const removeItem = async (idGioHang) => {
-    try {
-      await deleteCartLine(idGioHang);
-      await load();
-    } catch (e) {
-      setError(e.message || 'Lỗi xóa dòng giỏ hàng.');
-    }
-  };
-
-  const loadSuggest = useCallback(async () => {
-    const hkId = hocKyFilter.trim() || (cart?.idHocKy != null ? String(cart.idHocKy) : '');
-    if (!hkId) return;
-    setSuggestLoading(true);
-    setSuggestErr('');
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/registration/suggestions/me?hocKyId=${encodeURIComponent(hkId)}`,
-        { headers: authHeaders() }
-      );
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message || 'Không tải gợi ý môn.');
-      setSuggest(body);
-    } catch (e) {
-      setSuggestErr(e.message || 'Lỗi gợi ý.');
-      setSuggest(null);
-    } finally {
-      setSuggestLoading(false);
-    }
-  }, [cart?.idHocKy, hocKyFilter]);
-
-  useEffect(() => {
-    if (!loading && cart?.idHocKy) {
-      loadSuggest();
-    }
-  }, [loading, cart?.idHocKy, hocKyFilter, loadSuggest]);
-
-  const hkBadge = cart?.hocKyLabel || '—';
-  const internalConflicts = cart?.soDoiTrungLichTrongGioHang ?? 0;
-  const vsOfficial = cart?.coTrungLichVoiDangKyChinhThuc;
-  const preOpen = cart != null && cart.preDangKyDangMo !== false;
-  const canAddToCart = preOpen;
-
-  const filteredSuggest = useMemo(() => {
-    const rows = safeArray(suggest?.lopDeXuat);
-    const kw = search.trim().toLowerCase();
-    if (!kw) return rows;
-    return rows.filter((r) => {
-      const blob = [r.maLopHp, r.tenHocPhan, r.maHocPhan, r.tenGiangVien].join(' ').toLowerCase();
-      return blob.includes(kw);
-    });
-  }, [suggest, search]);
-
-  const addBlock = async () => {
-    const blockId = Number(blockIdInput);
-    if (!Number.isFinite(blockId) || blockId <= 0) {
-      setError('Nhập id block hợp lệ.');
+    if (!hocKyId) {
+      setLoading(false);
       return;
     }
-    setBlockBusy(true);
-    setError('');
-    setMsg('');
-    try {
-      const payload = { idTkbBlock: blockId };
-      if (hocKyFilter) payload.hocKyId = Number(hocKyFilter);
-      const res = await fetch(`${API_BASE_URL}/api/v1/pre-reg/cart/blocks`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message || 'Không thêm được block.');
-      setBlockModalOpen(false);
-      setBlockIdInput('');
-      setMsg('Đã thêm block vào giỏ.');
-      await load();
-    } catch (e) {
-      setError(e.message || 'Lỗi thêm block.');
-    } finally {
-      setBlockBusy(false);
+    (async () => {
+      setLoading(true);
+      setLoadErr('');
+      try {
+        await loadIntents();
+      } catch (e) {
+        setLoadErr(e.message || 'Lỗi tải dữ liệu.');
+        setIntents([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [hocKyId, loadIntents]);
+
+  /** Đồng bộ với backend — khi không còn cửa sổ / mốc PRE nào khớp, admin đã đóng hoàn toàn phiên PRE. */
+  useEffect(() => {
+    if (!hocKyId) {
+      setPreLocked(true);
+      return undefined;
+    }
+    setPreLocked(true);
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const qs = `?hocKyId=${encodeURIComponent(hocKyId)}`;
+        const res = await fetch(`${API_BASE_URL}/api/v1/registrations/me/window-status${qs}`, {
+          headers: authHeaders(),
+          signal: ac.signal
+        });
+        const body = await parseBody(res);
+        if (ac.signal.aborted) return;
+        if (!res.ok) {
+          setPreLocked(true);
+          return;
+        }
+        setPreLocked(body.preDangKyDangMo !== true);
+      } catch {
+        setPreLocked(true);
+      }
+    })();
+    return () => ac.abort();
+  }, [hocKyId]);
+
+  const markLockedFromResponse = (res, body) => {
+    if (res.status === 403) {
+      setPreLocked(true);
+      return;
+    }
+    const msg = errMessage(body, '');
+    if (/PRE|pha|mở|đóng|cửa|window|không cho|không được/i.test(msg)) {
+      setPreLocked(true);
     }
   };
 
+  const openAddFromCurriculum = (row) => {
+    if (preLocked || row?.daHoanThanh) return;
+    if (intentIds.has(Number(row.idHocPhan))) {
+      const existing = intents.find((i) => Number(i.idHocPhan) === Number(row.idHocPhan));
+      if (existing) openEdit(existing);
+      return;
+    }
+    setEditing(null);
+    setPresetCurriculumCourse({
+      idHocPhan: row.idHocPhan,
+      maHocPhan: row.maHocPhan,
+      tenHocPhan: row.tenHocPhan,
+      hocKyGoiY: row.hocKyGoiY,
+      khoiKienThuc: row.khoiKienThuc
+    });
+    setFormIdHocPhan(String(row.idHocPhan));
+    setFormPriority(Math.max(1, intents.length + 1));
+    setFormGhiChu('');
+    setModalOpen(true);
+  };
+
+  const openAdd = () => {
+    if (preLocked) {
+      showToast('warn', 'Không thể thêm', 'Pha đăng ký dự kiến có thể đã đóng.');
+      return;
+    }
+    setEditing(null);
+    setPresetCurriculumCourse(null);
+    setFormIdHocPhan('');
+    setFormPriority(Math.max(1, intents.length + 1));
+    setFormGhiChu('');
+    setModalOpen(true);
+    loadCoursesForModal();
+  };
+
+  const openEdit = (row) => {
+    if (preLocked) return;
+    setPresetCurriculumCourse(null);
+    setEditing(row);
+    setFormIdHocPhan(String(row.idHocPhan));
+    setFormPriority(Number(row.priority) || 1);
+    setFormGhiChu(row.ghiChu || '');
+    setModalOpen(true);
+    loadCoursesForModal();
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+    setPresetCurriculumCourse(null);
+  };
+
+  const submitModal = async () => {
+    if (preLocked) {
+      showToast('warn', 'Pha PRE đang đóng', 'Chờ admin mở pha đăng ký dự kiến hoặc tải lại trạng thái.');
+      return;
+    }
+    const idHocKy = Number(hocKyId);
+    const idHocPhan = Number(formIdHocPhan);
+    if (!Number.isFinite(idHocKy) || !Number.isFinite(idHocPhan)) {
+      showToast('error', 'Thiếu thông tin', 'Chọn học kỳ và học phần.');
+      return;
+    }
+    const payload = {
+      idHocKy,
+      idHocPhan,
+      priority: Number(formPriority) >= 1 ? Number(formPriority) : 1,
+      ghiChu: formGhiChu?.trim() || undefined
+    };
+    setActionBusy(true);
+    try {
+      const url =
+        editing != null
+          ? `${API_BASE_URL}/api/v1/pre-registrations/intents/${editing.id}`
+          : `${API_BASE_URL}/api/v1/pre-registrations/intents`;
+      const method = editing != null ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: authHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const body = await parseBody(res);
+      if (!res.ok) {
+        markLockedFromResponse(res, body);
+        throw new Error(errMessage(body, 'Không lưu được.'));
+      }
+      await loadIntents();
+      closeModal();
+      showToast('ok', 'Đã lưu', editing ? 'Đã cập nhật nguyện vọng.' : 'Đã thêm nguyện vọng.');
+    } catch (e) {
+      showToast('error', 'Lỗi', e.message || 'Không lưu được.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const removeIntent = async (row) => {
+    if (preLocked) return;
+    if (!window.confirm(`Xóa nguyện vọng ${row.maHocPhan}?`)) return;
+    setActionBusy(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/pre-registrations/intents/${row.id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      const body = await parseBody(res);
+      if (!res.ok) {
+        if (res.status !== 204) markLockedFromResponse(res, body);
+        throw new Error(errMessage(body, 'Không xóa được.'));
+      }
+      await loadIntents();
+      showToast('ok', 'Đã xóa', row.maHocPhan);
+    } catch (e) {
+      showToast('error', 'Lỗi', e.message || 'Không xóa được.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const refresh = async () => {
+    if (!hocKyId) return;
+    setLoading(true);
+    setLoadErr('');
+    try {
+      await loadIntents();
+    } catch (e) {
+      setLoadErr(e.message || 'Lỗi làm mới.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showBanner =
+    !bannerDismissed && (preLocked || location.state?.preClosed === true);
+
+  const toastStyles =
+    toast?.kind === 'error'
+      ? 'border-error bg-inverse-surface text-surface'
+      : toast?.kind === 'warn'
+        ? 'border-secondary text-on-surface'
+        : 'border-primary bg-inverse-surface text-surface';
+
   return (
-    <main className="min-h-screen bg-[#f9f9ff] p-8 lg:p-12">
-      <header className="mb-10">
-        <h2 className="text-3xl font-extrabold text-on-surface tracking-tight">Đăng ký học phần sơ bộ</h2>
-        <p className="text-on-surface-variant font-medium mt-1">{hkBadge}</p>
+    <div className="text-on-background selection:bg-primary-fixed selection:text-on-primary-fixed min-h-[60vh]">
+      <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
+        <div className="max-w-2xl">
+          <h1 className="text-3xl font-extrabold text-primary tracking-tight mb-2">
+            Đăng ký dự kiến (PRE)
+          </h1>
+          <p className="text-on-surface-variant text-base leading-relaxed">
+            Pha đăng ký sơ bộ giúp nhà trường dự báo nhu cầu mở lớp. Kết quả này không thay thế việc đăng ký
+            chính thức.
+          </p>
+        </div>
+        <div className="bg-surface-container rounded-full px-5 py-2 flex flex-wrap items-center gap-3 self-start">
+          <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
+            Học kỳ
+          </span>
+          <select
+            className="bg-transparent border-none text-primary font-bold focus:ring-0 cursor-pointer text-sm max-w-[14rem]"
+            value={hocKyId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setHocKyId(v);
+              rememberStudentHocKy(v);
+              setBannerDismissed(false);
+            }}
+          >
+            {hocKys.length === 0 && <option value="">—</option>}
+            {hocKys.map((hk) => {
+              const id = hk.idHocKy ?? hk.id;
+              const label = hk.tenHocKy || hk.ten || String(id);
+              return (
+                <option key={id} value={String(id)}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </div>
       </header>
 
-      {error && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">{error}</div>}
-      {msg && <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{msg}</div>}
+      {showBanner && (
+        <div className="mb-8 bg-secondary-container text-on-secondary-container p-4 rounded-xl flex items-center justify-between shadow-sm border-l-4 border-secondary">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="material-symbols-outlined text-secondary shrink-0">warning</span>
+            <span className="font-medium text-sm">
+              Pha đăng ký dự kiến chưa mở hoặc đã đóng — chỉ xem, không chỉnh sửa (hoặc hệ thống từ chối
+              thao tác ghi).
+            </span>
+          </div>
+          <button
+            type="button"
+            className="p-1 hover:bg-secondary/10 rounded-full transition-colors shrink-0"
+            onClick={() => setBannerDismissed(true)}
+            aria-label="Đóng"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-12 gap-8">
-        <section className="col-span-12 lg:col-span-8 space-y-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Học kỳ</label>
-                <select
-                  className="w-full bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary text-sm py-3 px-4"
-                  value={hocKyFilter}
-                  onChange={(e) => setHocKyFilter(e.target.value)}
-                >
-                  {hocKys.map((h) => (
-                    <option key={h.idHocKy} value={h.idHocKy}>
-                      HK{h.kyThu} ({h.namHoc})
-                    </option>
+      <section className="mb-10 rounded-xl bg-surface-container-lowest shadow-sm overflow-hidden border border-outline-variant/10">
+        <div className="px-5 py-4 border-b border-surface-container bg-surface-container-low flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <div>
+            <h2 className="text-lg font-bold text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined">menu_book</span>
+              Chương trình đào tạo của bạn
+            </h2>
+            {degreeAudit && (
+              <p className="text-xs text-on-surface-variant mt-1">
+                Ngành: <span className="font-semibold text-on-surface">{degreeAudit.tenNganh}</span>
+                {degreeAudit.maNganh ? ` (${degreeAudit.maNganh})` : ''}
+                {degreeAudit.tenKhoa ? ` · Khoa: ${degreeAudit.tenKhoa}` : ''}
+                {degreeAudit.namApDung != null ? ` · CTĐT áp dụng ${degreeAudit.namApDung}` : ''}
+              </p>
+            )}
+          </div>
+          <label className="inline-flex items-center gap-2 text-sm cursor-pointer select-none text-on-surface-variant">
+            <input
+              type="checkbox"
+              checked={hideCompletedCourses}
+              onChange={(e) => setHideCompletedCourses(e.target.checked)}
+              className="rounded border-outline-variant text-primary focus:ring-primary"
+            />
+            Ẩn môn đã hoàn thành
+          </label>
+        </div>
+
+        {degreeLoading && (
+          <div className="p-8 text-sm text-on-surface-variant">Đang tải khung học phần theo ngành…</div>
+        )}
+        {!degreeLoading && degreeErr && (
+          <div className="p-6 border-t border-outline-variant/20">
+            <p className="text-sm text-error font-medium">{degreeErr}</p>
+            <p className="text-xs text-on-surface-variant mt-2">
+              Khi pha PRE đang mở theo cửa sổ đăng ký, bạn có thể dùng «Thêm học phần» — nếu pha PRE chưa mở, nút
+              sẽ bị khóa.
+            </p>
+          </div>
+        )}
+        {!degreeLoading && !degreeErr && visibleCurriculumRows.length === 0 && (
+          <div className="p-8 text-center text-sm text-on-surface-variant">
+            Không có học phần trong CTĐT (hoặc đã ẩn hết sau lọc).
+          </div>
+        )}
+        {!degreeLoading && !degreeErr && visibleCurriculumRows.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left border-collapse text-sm">
+              <thead className="bg-surface-container text-on-surface-variant text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-3 font-bold">Kỳ gợi ý (CTĐT)</th>
+                  <th className="px-4 py-3 font-bold">Khối</th>
+                  <th className="px-4 py-3 font-bold">Mã HP</th>
+                  <th className="px-4 py-3 font-bold">Tên học phần</th>
+                  <th className="px-4 py-3 font-bold text-center">TC</th>
+                  <th className="px-4 py-3 font-bold">Loại</th>
+                  <th className="px-4 py-3 font-bold">Tiến độ học</th>
+                  <th className="px-4 py-3 font-bold text-right">Đăng ký dự kiến</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-container">
+                {visibleCurriculumRows.map((row, idx) => {
+                  const inPre = intentIds.has(Number(row.idHocPhan));
+                  const done = !!row.daHoanThanh;
+                  const kyLabel =
+                    row.hocKyGoiY != null && row.hocKyGoiY !== '' ? `Kỳ ${row.hocKyGoiY}` : '—';
+                  return (
+                    <tr
+                      key={`ctdt-${row.idHocPhan}-${idx}`}
+                      className={`hover:bg-surface-container-low/60 ${done ? 'opacity-70' : ''}`}
+                    >
+                      <td className="px-4 py-3 font-semibold tabular-nums text-primary">{kyLabel}</td>
+                      <td className="px-4 py-3 text-on-surface-variant text-xs">{prettyKhoi(row.khoiKienThuc)}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{row.maHocPhan}</td>
+                      <td className="px-4 py-3 font-medium">{row.tenHocPhan}</td>
+                      <td className="px-4 py-3 text-center">{row.soTinChi ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                            row.batBuoc ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-secondary-container text-on-secondary-container'
+                          }`}
+                        >
+                          {row.batBuoc ? 'Bắt buộc' : 'Tự chọn'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {done ? (
+                          <span className="text-on-surface-variant">Đã qua</span>
+                        ) : (
+                          <span className="text-secondary font-semibold">Chưa hoàn thành</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        {done ? (
+                          <span className="text-on-surface-variant text-xs">—</span>
+                        ) : inPre ? (
+                          <button
+                            type="button"
+                            disabled={actionBusy || preLocked}
+                            onClick={() => {
+                              const ex = intents.find((i) => Number(i.idHocPhan) === Number(row.idHocPhan));
+                              if (ex) openEdit(ex);
+                            }}
+                            className="text-primary font-bold text-xs hover:underline disabled:opacity-40"
+                          >
+                            Đã trong PRE · Sửa
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={!hocKyId || actionBusy || preLocked}
+                            onClick={() => openAddFromCurriculum(row)}
+                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-bold hover:bg-primary/20 disabled:opacity-40"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                            Thêm PRE
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="px-5 py-3 bg-surface-container-low border-t border-surface-container text-[11px] text-on-surface-variant">
+          «Kỳ gợi ý» là học kỳ trong lộ trình CTĐT (không trùng với học kỳ đăng ký PRE ở góc trên — đó là học kỳ thực tế đang đăng ký).
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-8 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={!hocKyId || actionBusy || preLocked}
+                onClick={openAdd}
+                className="bg-primary hover:bg-primary-container disabled:opacity-50 text-white px-6 py-2.5 rounded-full font-bold flex items-center gap-2 shadow-lg shadow-primary/20 transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                Thêm học phần (khác CTĐT)
+              </button>
+              <button
+                type="button"
+                disabled={!hocKyId || loading}
+                onClick={refresh}
+                className="bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-5 py-2.5 rounded-full font-semibold flex items-center gap-2 transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px]">refresh</span>
+                Làm mới
+              </button>
+            </div>
+            <p className="text-sm text-on-surface-variant font-medium">
+              Đã chọn: <span className="text-primary font-bold">{intents.length} học phần</span> ({tongTinChi}{' '}
+              tín chỉ)
+            </p>
+          </div>
+
+          {loadErr && (
+            <div className="rounded-xl border border-error-container bg-error-container/30 p-4 text-sm text-on-surface">
+              {loadErr}
+            </div>
+          )}
+
+          <div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+            {loading ? (
+              <div className="p-8 text-on-surface-variant text-sm">Đang tải…</div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-surface-container text-on-surface-variant">
+                  <tr>
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider">Ưu tiên</th>
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider">Mã học phần</th>
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider">Tên học phần</th>
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider">Tín chỉ</th>
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider">Ghi chú</th>
+                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-right">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-container">
+                  {intents.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant text-sm">
+                        Chưa có nguyện vọng cho học kỳ này.
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={openAdd}
+                            disabled={!hocKyId || preLocked}
+                            className="text-primary font-bold hover:underline disabled:opacity-50"
+                          >
+                            Thêm học phần
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {intents.map((row, idx) => (
+                    <tr
+                      key={row.id ?? idx}
+                      className="hover:bg-surface-container-low/80 transition-colors group"
+                    >
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline opacity-40 text-[20px]">
+                            drag_indicator
+                          </span>
+                          <span className="font-bold text-primary tabular-nums">
+                            {String(row.priority ?? idx + 1).padStart(2, '0')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 font-mono text-sm text-on-surface-variant">{row.maHocPhan}</td>
+                      <td className="px-4 py-4 font-semibold text-sm">{row.tenHocPhan}</td>
+                      <td className="px-4 py-4">
+                        <span className="bg-primary-fixed text-on-primary-fixed px-2.5 py-1 rounded-full text-xs font-bold">
+                          {row.soTinChi ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm italic text-on-surface-variant max-w-[12rem] truncate">
+                        {row.ghiChu || '—'}
+                      </td>
+                      <td className="px-4 py-4 text-right space-x-1">
+                        <button
+                          type="button"
+                          disabled={preLocked || actionBusy}
+                          onClick={() => openEdit(row)}
+                          className="p-2 text-on-surface-variant hover:text-primary transition-colors disabled:opacity-40"
+                          aria-label="Sửa"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={preLocked || actionBusy}
+                          onClick={() => removeIntent(row)}
+                          className="p-2 text-on-surface-variant hover:text-error transition-colors disabled:opacity-40"
+                          aria-label="Xóa"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </td>
+                    </tr>
                   ))}
-                </select>
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Tìm kiếm học phần</label>
-                <input
-                  className="w-full bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary text-sm py-3 px-4"
-                  placeholder="Nhập mã lớp, tên môn học hoặc giảng viên..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={loadSuggest} className="px-4 py-2 rounded-full bg-primary text-white text-sm font-bold">
-                Tải danh sách gợi ý
-              </button>
-              <button type="button" onClick={() => setBlockModalOpen(true)} className="px-4 py-2 rounded-full bg-surface-container text-on-surface text-sm font-semibold">
-                Thêm theo Block
-              </button>
-            </div>
-            {!preOpen && (
-              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Ngoài phiên pre-registration do admin cấu hình, thao tác thêm vào giỏ sẽ bị chặn.
-              </p>
+                </tbody>
+              </table>
             )}
           </div>
+        </div>
 
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest px-1">
-              Kết quả tìm kiếm ({filteredSuggest.length})
+        <aside className="lg:col-span-4 space-y-6">
+          <div className="bg-surface-container rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-primary mb-3 flex items-center gap-2">
+              <span className="material-symbols-outlined">info</span>
+              Hướng dẫn đăng ký
             </h3>
-            {suggestLoading && <p className="text-sm text-on-surface-variant">Đang tải dữ liệu môn mở...</p>}
-            {suggestErr && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{suggestErr}</p>}
-            {!suggestLoading &&
-              filteredSuggest.map((row) => (
-                <div key={row.idLopHp} className="bg-white rounded-xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-primary-fixed text-on-primary-fixed text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                        {row.maLopHp}
-                      </span>
-                      <h4 className="text-lg font-bold text-on-surface">{row.tenHocPhan}</h4>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-y-2 text-sm text-on-surface-variant">
-                      <div>{row.tenGiangVien || 'Chưa gán GV'}</div>
-                      <div>{firstSlotLabel(row.thoiKhoaBieuJson)}</div>
-                      <div>{row.soTinChi ?? '—'} tín chỉ</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      disabled={!canAddToCart || addBusyId === row.idLopHp}
-                      onClick={() => addItemById(row.idLopHp)}
-                      className="px-4 py-2 rounded-full border-2 border-primary text-primary font-bold text-sm disabled:opacity-50"
-                    >
-                      {addBusyId === row.idLopHp ? 'Đang thêm...' : 'Thêm vào giỏ'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBlockModalOpen(true)}
-                      className="px-4 py-2 rounded-full bg-primary text-white font-bold text-sm"
-                    >
-                      Thêm theo Block
-                    </button>
-                  </div>
-                </div>
-              ))}
-            {!suggestLoading && filteredSuggest.length === 0 && (
-              <div className="bg-white border border-surface-container rounded-xl p-6 text-sm text-on-surface-variant">
-                Không có học phần phù hợp bộ lọc hiện tại.
-              </div>
-            )}
+            <ul className="space-y-3 text-on-surface-variant text-sm leading-relaxed">
+              <li className="flex gap-3">
+                <span className="bg-primary-container text-white h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">
+                  1
+                </span>
+                <span>Sắp xếp học phần theo thứ tự ưu tiên quan trọng nhất.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="bg-primary-container text-white h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">
+                  2
+                </span>
+                <span>Dữ liệu giúp nhà trường dự báo mở lớp và phân bổ nguồn lực.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="bg-primary-container text-white h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">
+                  3
+                </span>
+                <span>Bạn có thể chỉnh sửa trước khi pha PRE kết thúc (nếu cửa sổ còn mở).</span>
+              </li>
+            </ul>
           </div>
-        </section>
-
-        <aside className="col-span-12 lg:col-span-4">
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden sticky top-8">
-            <div className="bg-primary-container p-6">
-              <h3 className="text-xl font-bold text-on-primary">Giỏ đăng ký của tôi</h3>
-              <p className="text-blue-200 text-xs mt-1">
-                Đã chọn {cart?.tongSoMon ?? 0} học phần - {cart?.tongTinChi ?? 0} tín chỉ
-              </p>
-            </div>
-            <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
-              {loading && <p className="text-sm text-on-surface-variant">Đang tải giỏ...</p>}
-              {!loading && safeArray(cart?.items).length === 0 && (
-                <p className="text-sm text-on-surface-variant">Giỏ đang trống.</p>
-              )}
-              {safeArray(cart?.items).map((it) => (
-                <div key={it.idGioHang} className="flex justify-between items-start border-b border-surface-container pb-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-primary">{it.maLopHp}</p>
-                    <h5 className="font-bold text-sm">{it.tenHocPhan}</h5>
-                    <p className="text-xs text-on-surface-variant">{it.soTinChi ?? '—'} TC</p>
-                  </div>
-                  <button type="button" onClick={() => removeItem(it.idGioHang)} className="text-outline hover:text-error p-1">
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="p-6 bg-surface-container-low border-t border-surface-container mt-auto">
-              {(internalConflicts > 0 || vsOfficial) && (
-                <div className="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {internalConflicts > 0 ? `Có ${internalConflicts} cặp trùng lịch trong giỏ. ` : ''}
-                  {vsOfficial ? 'Có lớp trùng lịch với đăng ký chính thức.' : ''}
-                </div>
-              )}
-              <button type="button" onClick={load} className="w-full bg-primary text-white py-3 rounded-full font-bold">
-                Lưu / làm mới nháp
-              </button>
-              <p className="text-[10px] text-center text-on-surface-variant mt-3 italic">
-                Đây là giỏ sơ bộ (pre-registration), chưa phải đăng ký chính thức.
-              </p>
-              <p className="text-[10px] text-center text-on-surface-variant mt-1">
-                Khung giờ pre-reg: {formatIso(cart?.preDangKyMoTu)} - {formatIso(cart?.preDangKyMoDen)}
-              </p>
-            </div>
+          <div className="relative overflow-hidden bg-primary rounded-2xl p-6 text-white">
+            <h4 className="text-base font-bold mb-2">Cần hỗ trợ?</h4>
+            <p className="text-on-primary-container text-sm mb-4">
+              Liên hệ phòng Đào tạo nếu bạn không tìm thấy học phần mong muốn.
+            </p>
+            <Link
+              to="/student/tracuhscnhnthtconline"
+              className="inline-block bg-white text-primary px-5 py-2 rounded-full text-sm font-bold hover:bg-primary-fixed transition-colors"
+            >
+              Hồ sơ & liên hệ
+            </Link>
+            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-white/10 text-8xl select-none pointer-events-none">
+              support_agent
+            </span>
           </div>
         </aside>
       </div>
 
-      {blockModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/40 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-surface-container flex justify-between items-center">
-              <h3 className="text-xl font-extrabold text-on-surface">Chọn Block TKB</h3>
-              <button type="button" onClick={() => setBlockModalOpen(false)} className="p-2 hover:bg-surface-container rounded-full">
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4">
+          <div
+            className="bg-surface-container-lowest w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pre-modal-title"
+          >
+            <div className="px-6 py-4 border-b border-surface-container flex justify-between items-center bg-surface-container-low">
+              <h3 id="pre-modal-title" className="text-lg font-bold text-primary">
+                {editing ? 'Sửa nguyện vọng' : 'Thêm nguyện vọng học phần'}
+              </h3>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="text-on-surface-variant hover:text-on-surface"
+                aria-label="Đóng"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="p-6 space-y-3">
-              <p className="text-sm text-on-surface-variant">
-                Backend hiện dùng API thêm block theo <code className="text-xs bg-surface-container px-1 rounded">idTkbBlock</code>.
-              </p>
-              <label className="text-xs font-semibold text-on-surface-variant uppercase block">
-                ID Block
-                <input
-                  type="number"
-                  min={1}
-                  value={blockIdInput}
-                  onChange={(e) => setBlockIdInput(e.target.value)}
-                  className="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm"
-                  placeholder="Nhập id block..."
+            <div className="p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  Học phần
+                </label>
+                {presetCurriculumCourse && editing == null ? (
+                  <div className="rounded-xl bg-primary-fixed/15 border border-primary/20 px-4 py-3 text-sm">
+                    <p className="font-mono font-bold text-primary">{presetCurriculumCourse.maHocPhan}</p>
+                    <p className="font-semibold text-on-surface mt-1">{presetCurriculumCourse.tenHocPhan}</p>
+                    <p className="text-xs text-on-surface-variant mt-2">
+                      CTĐT · {prettyKhoi(presetCurriculumCourse.khoiKienThuc)}
+                      {presetCurriculumCourse.hocKyGoiY != null
+                        ? ` · Kỳ gợi ý Kỳ ${presetCurriculumCourse.hocKyGoiY}`
+                        : ''}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary"
+                      value={formIdHocPhan}
+                      onChange={(e) => setFormIdHocPhan(e.target.value)}
+                      disabled={editing != null || coursesLoading}
+                    >
+                      <option value="">
+                        {coursesLoading ? 'Đang tải…' : 'Chọn mã hoặc tên học phần…'}
+                      </option>
+                      {courseOptions.map((c) => (
+                        <option
+                          key={c.idHocPhan}
+                          value={String(c.idHocPhan)}
+                          disabled={intentIds.has(Number(c.idHocPhan)) && editing == null}
+                        >
+                          {c.maHocPhan} — {c.tenHocPhan}
+                          {intentIds.has(Number(c.idHocPhan)) && editing == null ? ' (đã có)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Mức độ ưu tiên
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary"
+                    value={formPriority}
+                    onChange={(e) => setFormPriority(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Học kỳ
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-on-surface-variant outline-none"
+                    value={tenHocKyChon}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  Ghi chú (nếu có)
+                </label>
+                <textarea
+                  className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary h-24 resize-none"
+                  placeholder="Nhập ghi chú cho bộ phận đào tạo…"
+                  value={formGhiChu}
+                  onChange={(e) => setFormGhiChu(e.target.value)}
                 />
-              </label>
+              </div>
             </div>
-            <div className="p-6 bg-surface-container-low flex justify-end gap-3 border-t border-surface-container">
-              <button type="button" onClick={() => setBlockModalOpen(false)} className="px-6 py-2 rounded-full text-on-surface-variant font-bold">
+            <div className="px-6 py-4 bg-surface-container-low flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="px-4 py-2 text-on-surface-variant font-bold hover:text-primary transition-colors"
+              >
                 Hủy
               </button>
               <button
                 type="button"
-                onClick={addBlock}
-                disabled={blockBusy}
-                className="px-6 py-2 rounded-full bg-primary text-white font-bold disabled:opacity-50"
+                disabled={actionBusy || !formIdHocPhan}
+                onClick={submitModal}
+                className="bg-primary text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-primary/20 hover:bg-primary-container transition-all disabled:opacity-50"
               >
-                {blockBusy ? 'Đang thêm...' : 'Thêm block vào giỏ'}
+                {actionBusy ? 'Đang lưu…' : 'Lưu nguyện vọng'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </main>
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] max-w-md animate-in slide-in-from-right">
+          <div
+            className={`${toastStyles} px-4 py-3 rounded-xl shadow-2xl flex items-start gap-3 border-l-4`}
+          >
+            <span
+              className="material-symbols-outlined shrink-0"
+              style={toast.kind === 'error' ? { color: 'var(--color-error)' } : undefined}
+            >
+              {toast.kind === 'ok' ? 'check_circle' : toast.kind === 'warn' ? 'warning' : 'error'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">{toast.title}</p>
+              {toast.detail && <p className="text-xs opacity-80 mt-0.5">{toast.detail}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="opacity-60 hover:opacity-100"
+              aria-label="Đóng"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -35,7 +35,7 @@ public class HocKy {
     private Boolean trangThaiHienHanh; // Học kỳ đang diễn ra hiện tại
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tkb_trang_thai", nullable = false, length = 20)
+    @Column(name = "tkb_trang_thai", length = 20)
     @Builder.Default
     private TkbTrangThai tkbTrangThai = TkbTrangThai.NHAP;
 
@@ -58,7 +58,7 @@ public class HocKy {
     private Instant dangKyChinhThucDen;
 
     /** Bật snapshot cache / conflict-check (ADR TKB Phase 1). Bump khi có thay đổi LHP/TKB học kỳ. */
-    @Column(name = "tkb_revision", nullable = false)
+    @Column(name = "tkb_revision")
     @Builder.Default
     private Long tkbRevision = 0L;
 
