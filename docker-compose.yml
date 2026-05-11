@@ -4,7 +4,7 @@ services:
     image: mirror.gcr.io/postgres:15-alpine
     container_name: eduport-postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: eduport_user
       POSTGRES_PASSWORD: eduport_password

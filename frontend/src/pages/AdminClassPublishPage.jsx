@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { API_BASE_URL, authHeaders } from '../config/api';
@@ -52,6 +52,12 @@ const AdminClassPublishPage = () => {
   const [gvSelectId, setGvSelectId] = useState('');
   const [savingGv, setSavingGv] = useState(false);
   const [publishingOne, setPublishingOne] = useState(false);
+
+  // Schedule form state
+  const [tkbThu, setTkbThu] = useState('2');
+  const [tkbTiet, setTkbTiet] = useState('1-3');
+  const [tkbPhong, setTkbPhong] = useState('A101');
+  const [savingTkb, setSavingTkb] = useState(false);
 
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
@@ -173,6 +179,29 @@ const AdminClassPublishPage = () => {
       showToast('err', e.message || 'Không thể gán giảng viên.');
     } finally {
       setSavingGv(false);
+    }
+  };
+
+  const onAssignSchedule = async () => {
+    if (!activeRow) return;
+    setSavingTkb(true);
+    try {
+      const schedule = [{ thu: Number(tkbThu), tiet: tkbTiet, phong: tkbPhong }];
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/lop-hoc-phan/${activeRow.idLopHp}/assign-schedule`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(schedule)
+      });
+      const body = await parseBody(res);
+      if (!res.ok) throw new Error(errMsg(body, 'Gán lịch thất bại.'));
+      setRows((prev) => prev.map((r) => (r.idLopHp === activeRow.idLopHp ? { ...r, thoiKhoaBieuJson: schedule } : r)));
+      setStatusOverrides((prev) => ({ ...prev, [String(activeRow.idLopHp)]: String(body.statusPublish || inferStatus(activeRow, prev)) }));
+      setVersionMap((prev) => ({ ...prev, [String(activeRow.idLopHp)]: body.version }));
+      showToast('ok', body.message || 'Đã gán lịch học.');
+    } catch (e) {
+      showToast('err', e.message || 'Không thể gán lịch.');
+    } finally {
+      setSavingTkb(false);
     }
   };
 
@@ -377,6 +406,52 @@ const AdminClassPublishPage = () => {
               </select>
               <button type="button" onClick={onAssignGiangVien} disabled={!gvSelectId || savingGv} className="rounded-lg bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50">
                 {savingGv ? 'Đang lưu…' : 'Lưu giảng viên'}
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-surface-container-low p-4">
+              <p className="mb-2 text-xs font-semibold text-on-surface-variant">Gán lịch học (TKB)</p>
+              {hasSchedule(activeRow) ? (
+                <div className="mb-2 rounded-lg bg-primary-fixed/20 p-3 text-xs">
+                  <p className="font-semibold text-primary">Đã có lịch:</p>
+                  {activeRow.thoiKhoaBieuJson.map((slot, idx) => (
+                    <p key={idx} className="mt-1">Thứ {slot.thu} | Tiết {slot.tiet} | Phòng {slot.phong || '—'}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-2 text-xs text-error">Chưa có lịch — nhập bên dưới:</p>
+              )}
+              <div className="mb-2 grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-on-surface-variant">Thứ</label>
+                  <select value={tkbThu} onChange={(e) => setTkbThu(e.target.value)} className="w-full rounded-lg bg-surface-container-lowest px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+                    <option value="2">Thứ 2</option>
+                    <option value="3">Thứ 3</option>
+                    <option value="4">Thứ 4</option>
+                    <option value="5">Thứ 5</option>
+                    <option value="6">Thứ 6</option>
+                    <option value="7">Thứ 7</option>
+                    <option value="8">CN</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-on-surface-variant">Tiết</label>
+                  <select value={tkbTiet} onChange={(e) => setTkbTiet(e.target.value)} className="w-full rounded-lg bg-surface-container-lowest px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+                    <option value="1-3">Tiết 1-3</option>
+                    <option value="4-6">Tiết 4-6</option>
+                    <option value="7-9">Tiết 7-9</option>
+                    <option value="10-12">Tiết 10-12</option>
+                    <option value="1-5">Tiết 1-5</option>
+                    <option value="6-10">Tiết 6-10</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-on-surface-variant">Phòng</label>
+                  <input type="text" value={tkbPhong} onChange={(e) => setTkbPhong(e.target.value)} placeholder="A101" className="w-full rounded-lg bg-surface-container-lowest px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
+                </div>
+              </div>
+              <button type="button" onClick={onAssignSchedule} disabled={savingTkb} className="rounded-lg bg-primary-container px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50">
+                {savingTkb ? 'Đang lưu…' : 'Lưu lịch học'}
               </button>
             </div>
 

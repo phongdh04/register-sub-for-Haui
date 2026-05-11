@@ -31,13 +31,7 @@ public class RegistrationScheduleChecker {
 
     private final RegistrationWindowRepository registrationWindowRepository;
 
-    /**
-     * Constructor cũ — khi repository null không có cửa sổ nào ⇒ luôn đóng.
-     */
-    @Autowired(required = false)
-    public RegistrationScheduleChecker() {
-        this((RegistrationWindowRepository) null);
-    }
+
 
     // -------- API gốc (back-compat: HocKy-only) --------
 

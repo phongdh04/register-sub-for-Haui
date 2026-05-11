@@ -90,6 +90,15 @@ public class RegistrationServiceImpl implements IRegistrationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Lop hoc phan khong lien ket hoc phan.");
         }
+        // B4 guard: chỉ cho đăng ký lớp đã PUBLISHED + đang mở
+        if (lhp.getStatusPublish() != com.example.demo.domain.enums.LopHocPhanPublishStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Lop hoc phan chua duoc cong bo (publish). Khong the dang ky.");
+        }
+        if (!"DANG_MO".equals(lhp.getTrangThai())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Lop hoc phan khong o trang thai DANG_MO. Khong the dang ky.");
+        }
         if (!studentCurriculumCourseService.isHocPhanAllowedForEnrollment(
                 sv, hk.getIdHocKy(), lhp.getHocPhan().getIdHocPhan())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,

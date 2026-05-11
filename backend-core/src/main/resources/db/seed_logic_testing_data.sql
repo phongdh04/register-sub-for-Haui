@@ -64,16 +64,16 @@ BEGIN
     -- Lấy HP Đại số tuyến tính (BS6001), Kỹ thuật lập trình (IT6015), Cấu trúc dữ liệu và giải thuật (IT6002)
     SELECT id_hoc_phan INTO v_id_hp_dsltt FROM hoc_phan WHERE ma_hoc_phan = 'BS6001' LIMIT 1;
     IF v_id_hp_dsltt IS NOT NULL THEN
-        INSERT INTO lop_hoc_phan(ma_lop_hp, id_hoc_phan, id_hoc_ky, id_giang_vien, si_so_toi_da, hoc_phi, trang_thai, thoi_khoa_bieu_json)
-        VALUES ('BS6001_1', v_id_hp_dsltt, v_id_hk, v_id_gv01, 50, 1500000, 'DANG_MO', '[{"thu": 2, "tiet": "1-3", "phong": "D3-501"}]'::jsonb)
-        ON CONFLICT(ma_lop_hp) DO UPDATE SET trang_thai = 'DANG_MO';
+        INSERT INTO lop_hoc_phan(ma_lop_hp, id_hoc_phan, id_hoc_ky, id_giang_vien, si_so_toi_da, hoc_phi, trang_thai, thoi_khoa_bieu_json, status_publish, version)
+        VALUES ('BS6001_1', v_id_hp_dsltt, v_id_hk, v_id_gv01, 50, 1500000, 'DANG_MO', '[{"thu": 2, "tiet": "1-3", "phong": "D3-501"}]'::jsonb, 'PUBLISHED', 1)
+        ON CONFLICT(ma_lop_hp) DO UPDATE SET trang_thai = 'DANG_MO', status_publish = 'PUBLISHED';
     END IF;
 
     SELECT id_hoc_phan INTO v_id_hp_ktlt FROM hoc_phan WHERE ma_hoc_phan = 'IT6015' LIMIT 1;
     IF v_id_hp_ktlt IS NOT NULL THEN
-        INSERT INTO lop_hoc_phan(ma_lop_hp, id_hoc_phan, id_hoc_ky, id_giang_vien, si_so_toi_da, hoc_phi, trang_thai, thoi_khoa_bieu_json)
-        VALUES ('IT6015_1', v_id_hp_ktlt, v_id_hk, v_id_gv01, 40, 2000000, 'DANG_MO', '[{"thu": 4, "tiet": "4-6", "phong": "D5-202"}]'::jsonb)
-        ON CONFLICT(ma_lop_hp) DO UPDATE SET trang_thai = 'DANG_MO';
+        INSERT INTO lop_hoc_phan(ma_lop_hp, id_hoc_phan, id_hoc_ky, id_giang_vien, si_so_toi_da, hoc_phi, trang_thai, thoi_khoa_bieu_json, status_publish, version)
+        VALUES ('IT6015_1', v_id_hp_ktlt, v_id_hk, v_id_gv01, 40, 2000000, 'DANG_MO', '[{"thu": 4, "tiet": "4-6", "phong": "D5-202"}]'::jsonb, 'PUBLISHED', 1)
+        ON CONFLICT(ma_lop_hp) DO UPDATE SET trang_thai = 'DANG_MO', status_publish = 'PUBLISHED';
     END IF;
 
 END $$;

@@ -143,6 +143,7 @@ const AdminRegistrationWindowsPage = () => {
   const loadWindows = useCallback(async () => {
     if (!hocKyId) {
       setRows([]);
+      setLoading(false);
       return;
     }
     setLoading(true);

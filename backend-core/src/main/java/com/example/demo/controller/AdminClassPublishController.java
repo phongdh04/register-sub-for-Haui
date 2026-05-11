@@ -53,6 +53,14 @@ public class AdminClassPublishController {
         return ResponseEntity.ok(classPublishService.assignGiangVien(idLopHp, body));
     }
 
+    @PostMapping("/{idLopHp}/assign-schedule")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LopHocPhanPublishResponse> assignSchedule(
+            @PathVariable Long idLopHp,
+            @RequestBody java.util.List<java.util.Map<String, Object>> body) {
+        return ResponseEntity.ok(classPublishService.assignSchedule(idLopHp, body));
+    }
+
     @PostMapping("/{idLopHp}/publish")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<LopHocPhanPublishResponse> publish(@PathVariable Long idLopHp) {

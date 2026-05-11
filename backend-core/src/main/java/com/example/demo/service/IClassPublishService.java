@@ -27,6 +27,12 @@ public interface IClassPublishService {
     LopHocPhanBulkPublishResponse bulkPublish(Long idHocKy);
 
     /**
+     * Gán lịch học (TKB) cho 1 lớp. Nếu lớp đã có giảng viên,
+     * status_publish được nâng lên SCHEDULED tự động.
+     */
+    LopHocPhanPublishResponse assignSchedule(Long idLopHp, java.util.List<java.util.Map<String, Object>> thoiKhoaBieu);
+
+    /**
      * Force-publish: mở tất cả lớp trong học kỳ về PUBLISHED + trang_thai DANG_MO,
      * bỏ qua điều kiện kiểm tra GV/lịch. Dùng cho demo/đồ án để mở đăng ký nhanh.
      */

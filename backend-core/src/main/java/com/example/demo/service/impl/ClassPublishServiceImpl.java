@@ -64,6 +64,30 @@ public class ClassPublishServiceImpl implements IClassPublishService {
 
     @Override
     @Transactional
+    public LopHocPhanPublishResponse assignSchedule(Long idLopHp, java.util.List<java.util.Map<String, Object>> thoiKhoaBieu) {
+        LopHocPhan lhp = findOrThrow(idLopHp);
+        if (lhp.getStatusPublish() == LopHocPhanPublishStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Lớp đã PUBLISHED, không cho phép sửa lịch ở Sprint 3.");
+        }
+        if (thoiKhoaBieu == null || thoiKhoaBieu.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Danh sách thời khóa biểu không được rỗng.");
+        }
+        lhp.setThoiKhoaBieuJson(thoiKhoaBieu);
+
+        // Auto-promote sang SCHEDULED nếu đã có giảng viên
+        if (lhp.getGiangVien() != null && lhp.getStatusPublish() == LopHocPhanPublishStatus.SHELL) {
+            lhp.setStatusPublish(LopHocPhanPublishStatus.SCHEDULED);
+        }
+        LopHocPhan saved = lopHocPhanRepository.save(lhp);
+        log.info("📅 ASSIGN-SCHEDULE lhp={} maLopHp={} slots={}", saved.getIdLopHp(), saved.getMaLopHp(), thoiKhoaBieu.size());
+        return toResponse(saved, "Đã gán lịch học" + (saved.getStatusPublish() == LopHocPhanPublishStatus.SCHEDULED
+                ? " (auto-promote SCHEDULED)" : ""));
+    }
+
+    @Override
+    @Transactional
     public LopHocPhanPublishResponse publish(Long idLopHp) {
         LopHocPhan lhp = findOrThrow(idLopHp);
         if (lhp.getStatusPublish() == LopHocPhanPublishStatus.PUBLISHED) {
@@ -71,6 +95,10 @@ public class ClassPublishServiceImpl implements IClassPublishService {
         }
         ensurePublishable(lhp);
         lhp.setStatusPublish(LopHocPhanPublishStatus.PUBLISHED);
+        // B3 fix: publish phải mở lớp nếu đang CHUA_MO (để FE filter trangThai=DANG_MO thấy được)
+        if ("CHUA_MO".equals(lhp.getTrangThai())) {
+            lhp.setTrangThai("DANG_MO");
+        }
         LopHocPhan saved = lopHocPhanRepository.save(lhp);
         log.info("✅ PUBLISH lhp={} maLopHp={}", saved.getIdLopHp(), saved.getMaLopHp());
         return toResponse(saved, "Đã PUBLISHED");
@@ -92,6 +120,10 @@ public class ClassPublishServiceImpl implements IClassPublishService {
             try {
                 ensurePublishable(lhp);
                 lhp.setStatusPublish(LopHocPhanPublishStatus.PUBLISHED);
+                // B3 fix: bulk publish cũng đổi trangThai sang DANG_MO
+                if ("CHUA_MO".equals(lhp.getTrangThai())) {
+                    lhp.setTrangThai("DANG_MO");
+                }
                 lopHocPhanRepository.save(lhp);
                 publishedIds.add(lhp.getIdLopHp());
             } catch (ResponseStatusException ex) {

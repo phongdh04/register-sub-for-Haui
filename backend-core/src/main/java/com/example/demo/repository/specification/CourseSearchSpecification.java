@@ -99,7 +99,12 @@ public class CourseSearchSpecification {
                 predicates.add(cb.equal(root.get("trangThai"), request.getTrangThai()));
             }
 
-            // ── FILTER 7: Chỉ lấy lớp còn chỗ ───────────────────
+            // ── FILTER 7: Chỉ lấy lớp đã PUBLISHED ──────────────
+            // SV/GV chỉ thấy lớp đã được admin công bố. Lớp SHELL hoặc SCHEDULED bị ẩn.
+            predicates.add(cb.equal(root.get("statusPublish"),
+                    com.example.demo.domain.enums.LopHocPhanPublishStatus.PUBLISHED));
+
+            // ── FILTER 8: Chỉ lấy lớp còn chỗ ───────────────────
             if (request.isChiConCho()) {
                 // siSoThucTe < siSoToiDa
                 predicates.add(cb.lessThan(root.get("siSoThucTe"), root.get("siSoToiDa")));
