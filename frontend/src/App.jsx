@@ -28,6 +28,8 @@ import AdminClassPublishPage from './pages/AdminClassPublishPage';
 import AdminPreRegistrationDemandPage from './pages/AdminPreRegistrationDemandPage';
 import AdminTimetableProjectionToolsPage from './pages/AdminTimetableProjectionToolsPage';
 import AdminRegistrationMonitoringPage from './pages/AdminRegistrationMonitoringPage';
+import AdminDataMasterPage from './pages/AdminDataMasterPage';
+import AdminLopHocPhanCrudPage from './pages/AdminLopHocPhanCrudPage';
 import AdminLayout from './layouts/AdminLayout';
 import QunLLpGingDyimDanh from './pages/QunLLpGingDyimDanh';
 import MngLiNhpQunLimGradingSystem from './pages/MngLiNhpQunLimGradingSystem';
@@ -92,6 +94,8 @@ function App() {
           <Route path="class-publish" element={<AdminClassPublishPage />} />
           <Route path="timetable-projection-tools" element={<AdminTimetableProjectionToolsPage />} />
           <Route path="registration-monitoring" element={<AdminRegistrationMonitoringPage />} />
+          <Route path="data-master" element={<AdminDataMasterPage />} />
+          <Route path="lop-hoc-phan" element={<AdminLopHocPhanCrudPage />} />
         </Route>
         <Route
           path="/teacher"

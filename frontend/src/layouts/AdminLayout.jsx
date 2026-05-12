@@ -6,6 +6,8 @@ const adminNav = [
   { to: '/admin/bocophntchanalytics', label: 'Analytics', icon: 'monitoring' },
   { to: '/admin/gimsttichnhktonadmin', label: 'Giám sát tài chính', icon: 'payments' },
   { to: '/admin/qunldanhmckhungmlpdatamaster', label: 'Data master', icon: 'dataset' },
+  { to: '/admin/data-master', label: 'Danh mục CRUD', icon: 'edit_note' },
+  { to: '/admin/lop-hoc-phan', label: 'Lớp Học Phần', icon: 'class' },
   { to: '/admin/registration-windows', label: 'Cửa sổ đăng ký', icon: 'event_available' },
   { to: '/admin/pre-registration-demand', label: 'Nhu cầu PRE', icon: 'analytics' },
   { to: '/admin/class-publish', label: 'Xuất bản lớp', icon: 'publish' },
