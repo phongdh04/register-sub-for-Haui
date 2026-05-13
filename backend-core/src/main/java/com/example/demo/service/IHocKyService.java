@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.payload.request.HocKyLichDangKyRequest;
 import com.example.demo.payload.request.HocKyRequest;
 import com.example.demo.payload.response.HocKyResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -11,6 +13,7 @@ import java.util.List;
  */
 public interface IHocKyService {
     List<HocKyResponse> getAll();
+    Page<HocKyResponse> getAllPaged(Pageable pageable);
     HocKyResponse getById(Long id);
     HocKyResponse getCurrent();
     HocKyResponse create(HocKyRequest request);

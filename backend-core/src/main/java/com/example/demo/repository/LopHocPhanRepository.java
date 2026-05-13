@@ -2,12 +2,13 @@ package com.example.demo.repository;
 
 import com.example.demo.domain.entity.LopHocPhan;
 import com.example.demo.domain.enums.LopHocPhanPublishStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -27,6 +28,7 @@ public interface LopHocPhanRepository extends JpaRepository<LopHocPhan, Long>,
     Optional<LopHocPhan> findByMaLopHp(String maLopHp);
 
     List<LopHocPhan> findByHocKy_IdHocKy(Long idHocKy);
+    Page<LopHocPhan> findByHocKy_IdHocKy(Long idHocKy, Pageable pageable);
 
     /**
      * Danh sách lớp theo học kỳ kèm học phần/GV (tránh lazy ngoài session — dùng cho admin + public list).

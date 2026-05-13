@@ -205,6 +205,7 @@ public class RegistrationWindowServiceImpl implements IRegistrationWindowService
         boolean dangMo = !now.isBefore(w.getOpenAt()) && !now.isAfter(w.getCloseAt());
         HocKy hk = w.getHocKy();
         NganhDaoTao nganh = w.getNganhDaoTao();
+        com.example.demo.domain.entity.RegistrationCampaign campaign = w.getCampaign();
         return RegistrationWindowResponse.builder()
                 .id(w.getId())
                 .idHocKy(hk != null ? hk.getIdHocKy() : null)
@@ -213,6 +214,8 @@ public class RegistrationWindowServiceImpl implements IRegistrationWindowService
                 .namNhapHoc(w.getNamNhapHoc())
                 .idNganh(nganh != null ? nganh.getIdNganh() : null)
                 .tenNganh(nganh != null ? nganh.getTenNganh() : null)
+                .idCampaign(campaign != null ? campaign.getId() : null)
+                .tenCampaign(campaign != null ? campaign.getTenCampaign() : null)
                 .openAt(w.getOpenAt())
                 .closeAt(w.getCloseAt())
                 .dangMo(dangMo)

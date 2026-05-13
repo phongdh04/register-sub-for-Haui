@@ -4,9 +4,13 @@ import com.example.demo.payload.request.ChuongTrinhDaoTaoRequest;
 import com.example.demo.payload.request.CtdtHocPhanRequest;
 import com.example.demo.payload.response.ChuongTrinhDaoTaoResponse;
 import com.example.demo.payload.response.CtdtHocPhanResponse;
+import com.example.demo.payload.response.PagedResponse;
 import com.example.demo.service.IChuongTrinhDaoTaoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +29,14 @@ public class ChuongTrinhDaoTaoController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ChuongTrinhDaoTaoResponse>> getAll() {
         return ResponseEntity.ok(ctdtService.getAll());
+    }
+
+    @GetMapping("/paged")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PagedResponse<ChuongTrinhDaoTaoResponse>> getAllPaged(
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<ChuongTrinhDaoTaoResponse> page = ctdtService.getAllPaged(pageable);
+        return ResponseEntity.ok(PagedResponse.of(page));
     }
 
     @GetMapping("/{id}")

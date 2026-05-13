@@ -3,6 +3,7 @@ package com.example.demo.repository;
 import com.example.demo.domain.entity.RegistrationWindow;
 import com.example.demo.domain.enums.RegistrationPhase;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -46,6 +47,7 @@ public interface RegistrationWindowRepository extends JpaRepository<Registration
             SELECT w FROM RegistrationWindow w
             LEFT JOIN FETCH w.nganhDaoTao
             LEFT JOIN FETCH w.hocKy
+            LEFT JOIN FETCH w.campaign
             WHERE w.hocKy.idHocKy = :hocKyId
               AND (:phase IS NULL OR w.phase = :phase)
             ORDER BY w.phase, w.namNhapHoc NULLS LAST, w.openAt
@@ -94,4 +96,35 @@ public interface RegistrationWindowRepository extends JpaRepository<Registration
             @Param("phase") RegistrationPhase phase,
             @Param("namNhapHoc") Integer namNhapHoc,
             @Param("nganhId") Long nganhId);
+
+    /**
+     * Lay tat ca window thuoc mot campaign.
+     */
+    @Query("""
+            SELECT w FROM RegistrationWindow w
+            LEFT JOIN FETCH w.hocKy
+            LEFT JOIN FETCH w.campaign
+            WHERE w.campaign.id = :campaignId
+            ORDER BY w.hocKy.namHoc, w.hocKy.kyThu
+            """)
+    List<RegistrationWindow> findByCampaignId(@Param("campaignId") Long campaignId);
+
+    /**
+     * Lay tat ca windows thuoc nhieu campaign (cho listAll/Active).
+     */
+    @Query("""
+            SELECT w FROM RegistrationWindow w
+            LEFT JOIN FETCH w.hocKy
+            LEFT JOIN FETCH w.campaign
+            WHERE w.campaign.id IN :campaignIds
+            ORDER BY w.campaign.id, w.hocKy.namHoc, w.hocKy.kyThu
+            """)
+    List<RegistrationWindow> findAllByCampaignIds(@Param("campaignIds") List<Long> campaignIds);
+
+    /**
+     * Xoa tat ca windows thuoc mot campaign.
+     */
+    @Modifying
+    @Query("DELETE FROM RegistrationWindow w WHERE w.campaign.id = :campaignId")
+    void deleteByCampaignId(@Param("campaignId") Long campaignId);
 }

@@ -9,6 +9,8 @@ import com.example.demo.repository.KhoaRepository;
 import com.example.demo.service.IGiangVienService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,12 @@ public class GiangVienServiceImpl implements IGiangVienService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<GiangVienResponse> getAllPaged(Pageable pageable) {
+        return giangVienRepository.findAll(pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public GiangVienResponse getById(Long id) {
         return toResponse(findOrThrow(id));
     }
@@ -44,6 +52,12 @@ public class GiangVienServiceImpl implements IGiangVienService {
     public List<GiangVienResponse> getByKhoa(Long idKhoa) {
         return giangVienRepository.findByKhoa_IdKhoa(idKhoa)
                 .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<GiangVienResponse> getByKhoaPaged(Long idKhoa, Pageable pageable) {
+        return giangVienRepository.findByKhoa_IdKhoa(idKhoa, pageable).map(this::toResponse);
     }
 
     @Override

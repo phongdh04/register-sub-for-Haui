@@ -1,30 +1,8 @@
 package com.example.demo.component;
 
-import com.example.demo.domain.entity.DangKyHocPhan;
-import com.example.demo.domain.entity.GiangVien;
-import com.example.demo.domain.entity.Khoa;
-import com.example.demo.domain.entity.LichThi;
-import com.example.demo.domain.entity.LopHocPhan;
-import com.example.demo.domain.entity.PhieuDuThi;
-import com.example.demo.domain.entity.GvBusySlot;
-import com.example.demo.domain.entity.PhongHoc;
-import com.example.demo.domain.entity.SinhVien;
-import com.example.demo.domain.entity.User;
-import com.example.demo.domain.enums.GvBusyLoai;
-import com.example.demo.domain.enums.LoaiPhong;
-import com.example.demo.domain.enums.Role;
-import com.example.demo.domain.enums.Status;
-import com.example.demo.domain.enums.TrangThaiPhong;
-import com.example.demo.repository.DangKyHocPhanRepository;
-import com.example.demo.repository.GiangVienRepository;
-import com.example.demo.repository.GvBusySlotRepository;
-import com.example.demo.repository.HocKyRepository;
-import com.example.demo.repository.KhoaRepository;
-import com.example.demo.repository.LichThiRepository;
-import com.example.demo.repository.PhieuDuThiRepository;
-import com.example.demo.repository.PhongHocRepository;
-import com.example.demo.repository.SinhVienRepository;
-import com.example.demo.repository.UserRepository;
+import com.example.demo.domain.entity.*;
+import com.example.demo.domain.enums.*;
+import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -33,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Data Seeder - Tự động tạo các tài khoản test khi Spring Boot khởi động.
@@ -53,6 +32,11 @@ public class DataSeeder implements CommandLineRunner {
     private final PhongHocRepository phongHocRepository;
     private final GvBusySlotRepository gvBusySlotRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NganhDaoTaoRepository nganhDaoTaoRepository;
+    private final LopRepository lopRepository;
+    private final HocPhanRepository hocPhanRepository;
+    private final ChuongTrinhDaoTaoRepository chuongTrinhDaoTaoRepository;
+    private final CtdtHocPhanRepository ctdtHocPhanRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -121,7 +105,40 @@ public class DataSeeder implements CommandLineRunner {
         seedPhongHocBaselinesIfFew();
         seedGvBusySlotsForSeedGiangVien();
 
+        // Seed đầy đủ dữ liệu cho sinh viên (Degree Audit)
+        seedFullNganhData();
+
+        // Đảm bảo sv01 cũng có profile sinh viên (liên kết với lớp CNTT-K17)
+        seedSv01ProfileIfMissing();
+
         log.info("Database seeding completed.");
+    }
+
+    /**
+     * Đảm bảo account sv01 có profile SinhVien (link với lớp CNTT-K17).
+     */
+    private void seedSv01ProfileIfMissing() {
+        userRepository.findByUsername("sv01").ifPresent(user -> {
+            if (sinhVienRepository.findByTaiKhoan_Id(user.getId()).isPresent()) {
+                return;
+            }
+            // Tránh trùng mã sinh viên
+            String baseMaSv = "SV000001";
+            int i = 1;
+            while (sinhVienRepository.existsByMaSinhVien(baseMaSv)) {
+                baseMaSv = String.format("SV%06d", ++i);
+            }
+            final String finalMaSv = baseMaSv;
+            lopRepository.findByMaLop("CT863-K17").ifPresent(lop -> {
+                SinhVien sv = sinhVienRepository.save(SinhVien.builder()
+                        .maSinhVien(finalMaSv)
+                        .hoTen("Nguyen Van A - sv01")
+                        .lop(lop)
+                        .taiKhoan(user)
+                        .build());
+                log.info("Seeded SinhVien profile for sv01: {} ({})", sv.getMaSinhVien(), sv.getHoTen());
+            });
+        });
     }
 
     /** TKB P0: ≥20 phòng demo (nhiều loại, 2 cơ sở). */
@@ -246,5 +263,174 @@ public class DataSeeder implements CommandLineRunner {
                 log.info("Cập nhật email mặc định cho admin: admin@eduport.demo (Task 22 MFA)");
             }
         });
+    }
+
+    /**
+     * Seed đầy đủ dữ liệu: Khoa, Ngành, Lớp, Học phần, CTĐT, Tài khoản SV cho mỗi ngành.
+     */
+    private void seedFullNganhData() {
+        // Tạo các Khoa nếu chưa có
+        Khoa khoaCntt = seedKhoaIfNotExists("CNTT", "Khoa Công nghệ thông tin");
+        Khoa khoaCoKhi = seedKhoaIfNotExists("CK", "Khoa Cơ khí");
+        Khoa khoaDien = seedKhoaIfNotExists("DIEN", "Khoa Điện");
+        Khoa khoaKinhTe = seedKhoaIfNotExists("KT", "Khoa Kinh tế");
+        Khoa khoaNgoaiNgu = seedKhoaIfNotExists("NN", "Khoa Ngoại ngữ");
+
+        // Tạo Học phần chung (Đại cương)
+        seedHocPhanDemo();
+
+        // Seed mỗi ngành: [maNganh, tenNganh, khoa, username, maSv, hoTen]
+        seedNganhWithStudent("CT863", "Công nghệ thông tin", khoaCntt, "sv_cntt", "20231001", "Nguyễn Văn A - CNTT");
+        seedNganhWithStudent("CT201", "Cơ khí ô tô", khoaCoKhi, "sv_ckoto", "20232001", "Trần Thị B - Cơ khí");
+        seedNganhWithStudent("CT301", "Kỹ thuật điện", khoaDien, "sv_dien", "20233001", "Lê Văn C - Điện");
+        seedNganhWithStudent("CT501", "Quản trị kinh doanh", khoaKinhTe, "sv_kt", "20235001", "Phạm Thị D - Kinh tế");
+        seedNganhWithStudent("CT601", "Ngôn ngữ Anh", khoaNgoaiNgu, "sv_nna", "20236001", "Hoàng Văn E - Ngoại ngữ");
+    }
+
+    private Khoa seedKhoaIfNotExists(String maKhoa, String tenKhoa) {
+        return khoaRepository.findByMaKhoa(maKhoa).orElseGet(() -> {
+            Khoa k = khoaRepository.save(Khoa.builder()
+                    .maKhoa(maKhoa)
+                    .tenKhoa(tenKhoa)
+                    .build());
+            log.info("Seeded Khoa: {}", tenKhoa);
+            return k;
+        });
+    }
+
+    private void seedNganhWithStudent(String maNganh, String tenNganh, Khoa khoa, String username, String maSv, String hoTen) {
+        // Tạo Ngành nếu chưa có
+        NganhDaoTao nganh = nganhDaoTaoRepository.findByMaNganh(maNganh)
+                .orElseGet(() -> {
+                    NganhDaoTao n = nganhDaoTaoRepository.save(NganhDaoTao.builder()
+                            .maNganh(maNganh)
+                            .tenNganh(tenNganh)
+                            .heDaoTao("Đại học")
+                            .khoa(khoa)
+                            .build());
+                    log.info("Seeded Ngành: {} ({})", tenNganh, maNganh);
+                    return n;
+                });
+
+        // Tạo Lớp
+        String maLop = maNganh + "-K17";
+        String tenLop = tenNganh + " - K17";
+        Lop lop = lopRepository.findByMaLop(maLop)
+                .orElseGet(() -> {
+                    Lop l = lopRepository.save(Lop.builder()
+                            .maLop(maLop)
+                            .tenLop(tenLop)
+                            .namNhapHoc(2023)
+                            .nganhDaoTao(nganh)
+                            .build());
+                    log.info("Seeded Lớp: {}", maLop);
+                    return l;
+                });
+
+        // Tạo CTĐT + mapping học phần
+        seedCtdtForNganh(nganh);
+
+        // Tạo tài khoản SV + profile SinhVien
+        seedStudentAccountAndProfile(username, maSv, hoTen, lop);
+    }
+
+    private void seedCtdtForNganh(NganhDaoTao nganh) {
+        // Kiểm tra đã có CTĐT chưa (dùng native query để tránh lỗi nhiều kết quả)
+        if (chuongTrinhDaoTaoRepository.findLatestByNganh(nganh.getIdNganh()).isPresent()) {
+            return;
+        }
+
+        ChuongTrinhDaoTao ctdt = chuongTrinhDaoTaoRepository.save(ChuongTrinhDaoTao.builder()
+                .nganhDaoTao(nganh)
+                .tongSoTinChi(130)
+                .mucTieu("Đào tạo cử nhân " + nganh.getTenNganh() + " có năng lực chuyên môn vững vàng.")
+                .thoiGianGiangDay("4 năm")
+                .doiTuongTuyenSinh("Tốt nghiệp THPT, đạt điểm chuẩn tuyển sinh")
+                .namApDung(2024)
+                .build());
+        log.info("Seeded CTĐT {} 2024 (ID: {})", nganh.getTenNganh(), ctdt.getIdCtdt());
+
+        // Mapping học phần vào CTĐT
+        seedCtdtHocPhanMapping(ctdt, "BS6001", "DAI_CUONG", true, 1);
+        seedCtdtHocPhanMapping(ctdt, "BS6002", "DAI_CUONG", true, 1);
+        seedCtdtHocPhanMapping(ctdt, "BS6003", "DAI_CUONG", true, 1);
+        seedCtdtHocPhanMapping(ctdt, "BS6004", "CO_SO_NGANH", true, 2);
+        seedCtdtHocPhanMapping(ctdt, "IT6001", "CO_SO_NGANH", true, 2);
+        seedCtdtHocPhanMapping(ctdt, "IT6002", "CO_SO_NGANH", true, 3);
+        seedCtdtHocPhanMapping(ctdt, "IT6003", "CO_SO_NGANH", true, 3);
+        seedCtdtHocPhanMapping(ctdt, "IT6004", "CHUYEN_NGANH", true, 5);
+        seedCtdtHocPhanMapping(ctdt, "IT6005", "CHUYEN_NGANH", true, 6);
+        seedCtdtHocPhanMapping(ctdt, "IT6006", "CHUYEN_NGANH", true, 6);
+        seedCtdtHocPhanMapping(ctdt, "IT6007", "TU_CHON", false, 7);
+        seedCtdtHocPhanMapping(ctdt, "IT6008", "TU_CHON", false, 8);
+    }
+
+    private void seedCtdtHocPhanMapping(ChuongTrinhDaoTao ctdt, String maHp, String khoi, boolean batBuoc, Integer hocKy) {
+        hocPhanRepository.findByMaHocPhan(maHp).ifPresent(hp -> {
+            if (!ctdtHocPhanRepository.existsByChuongTrinhDaoTao_IdCtdtAndHocPhan_IdHocPhan(ctdt.getIdCtdt(), hp.getIdHocPhan())) {
+                ctdtHocPhanRepository.save(CtdtHocPhan.builder()
+                        .chuongTrinhDaoTao(ctdt)
+                        .hocPhan(hp)
+                        .khoiKienThuc(khoi)
+                        .batBuoc(batBuoc)
+                        .hocKyGoiY(hocKy)
+                        .build());
+            }
+        });
+    }
+
+    private void seedStudentAccountAndProfile(String username, String maSv, String hoTen, Lop lop) {
+        // Tạo tài khoản nếu chưa có
+        User user = userRepository.findByUsername(username).orElseGet(() -> {
+            User u = userRepository.save(User.builder()
+                    .username(username)
+                    .password(passwordEncoder.encode("123456"))
+                    .role(Role.STUDENT)
+                    .status(Status.ACTIVE)
+                    .build());
+            log.info("Seeded Student account: {} / 123456", username);
+            return u;
+        });
+
+        // Tạo profile SinhVien nếu chưa có
+        if (sinhVienRepository.findByTaiKhoan_Id(user.getId()).isEmpty()) {
+            SinhVien sv = sinhVienRepository.save(SinhVien.builder()
+                    .maSinhVien(maSv)
+                    .hoTen(hoTen)
+                    .lop(lop)
+                    .taiKhoan(user)
+                    .build());
+            log.info("Seeded SinhVien: {} ({})", sv.getMaSinhVien(), sv.getHoTen());
+        }
+    }
+
+    /**
+     * Seed một số Học Phần demo (thuộc 4 khối kiến thức).
+     */
+    private void seedHocPhanDemo() {
+        seedHocPhanIfNotExists("BS6001", "Đại số tuyến tính", 3, "DAI_CUONG");
+        seedHocPhanIfNotExists("BS6002", "Giải tích 1", 3, "DAI_CUONG");
+        seedHocPhanIfNotExists("BS6003", "Vật lý đại cương 1", 3, "DAI_CUONG");
+        seedHocPhanIfNotExists("BS6004", "Nhập môn lập trình", 3, "CO_SO_NGANH");
+        seedHocPhanIfNotExists("IT6001", "Cấu trúc dữ liệu và giải thuật", 4, "CO_SO_NGANH");
+        seedHocPhanIfNotExists("IT6002", "Lập trình hướng đối tượng", 3, "CO_SO_NGANH");
+        seedHocPhanIfNotExists("IT6003", "Cơ sở dữ liệu", 3, "CO_SO_NGANH");
+        seedHocPhanIfNotExists("IT6004", "Mạng máy tính", 3, "CHUYEN_NGANH");
+        seedHocPhanIfNotExists("IT6005", "Trí tuệ nhân tạo", 3, "CHUYEN_NGANH");
+        seedHocPhanIfNotExists("IT6006", "Phát triển ứng dụng Web", 3, "CHUYEN_NGANH");
+        seedHocPhanIfNotExists("IT6007", "An toàn thông tin", 3, "TU_CHON");
+        seedHocPhanIfNotExists("IT6008", "Thực tập tốt nghiệp", 5, "TU_CHON");
+    }
+
+    private void seedHocPhanIfNotExists(String ma, String ten, int tc, String loaiMon) {
+        if (!hocPhanRepository.existsByMaHocPhan(ma)) {
+            hocPhanRepository.save(HocPhan.builder()
+                    .maHocPhan(ma)
+                    .tenHocPhan(ten)
+                    .soTinChi(tc)
+                    .loaiMon(loaiMon)
+                    .build());
+            log.info("Seeded HocPhan: {} - {}", ma, ten);
+        }
     }
 }

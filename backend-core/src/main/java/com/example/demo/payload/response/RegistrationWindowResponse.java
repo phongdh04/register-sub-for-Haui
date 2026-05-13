@@ -25,6 +25,10 @@ public class RegistrationWindowResponse {
     private Long idNganh;
     private String tenNganh;
 
+    /** ID cua campaign tao ra window nay — null neu tao thu cong. */
+    private Long idCampaign;
+    private String tenCampaign;
+
     private Instant openAt;
     private Instant closeAt;
     private boolean dangMo;

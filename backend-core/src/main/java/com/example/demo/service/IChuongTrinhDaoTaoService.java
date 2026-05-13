@@ -4,10 +4,14 @@ import com.example.demo.payload.request.ChuongTrinhDaoTaoRequest;
 import com.example.demo.payload.request.CtdtHocPhanRequest;
 import com.example.demo.payload.response.ChuongTrinhDaoTaoResponse;
 import com.example.demo.payload.response.CtdtHocPhanResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 public interface IChuongTrinhDaoTaoService {
     List<ChuongTrinhDaoTaoResponse> getAll();
+    Page<ChuongTrinhDaoTaoResponse> getAllPaged(Pageable pageable);
     ChuongTrinhDaoTaoResponse getById(Long id);
     ChuongTrinhDaoTaoResponse create(ChuongTrinhDaoTaoRequest request);
     ChuongTrinhDaoTaoResponse update(Long id, ChuongTrinhDaoTaoRequest request);

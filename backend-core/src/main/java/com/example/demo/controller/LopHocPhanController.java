@@ -2,9 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.payload.request.LopHocPhanRequest;
 import com.example.demo.payload.response.LopHocPhanResponse;
+import com.example.demo.payload.response.PagedResponse;
 import com.example.demo.service.ILopHocPhanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,6 +41,14 @@ public class LopHocPhanController {
         return ResponseEntity.ok(lopHocPhanService.getAllByHocKy(idHocKy));
     }
 
+    @GetMapping("/hoc-ky/{idHocKy}/paged")
+    public ResponseEntity<PagedResponse<LopHocPhanResponse>> getAllByHocKyPaged(
+            @PathVariable Long idHocKy,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<LopHocPhanResponse> page = lopHocPhanService.getAllByHocKyPaged(idHocKy, pageable);
+        return ResponseEntity.ok(PagedResponse.of(page));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<LopHocPhanResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(lopHocPhanService.getById(id));
@@ -51,7 +63,7 @@ public class LopHocPhanController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<LopHocPhanResponse> update(@PathVariable Long id,
-                                                      @Valid @RequestBody LopHocPhanRequest request) {
+                                                     @Valid @RequestBody LopHocPhanRequest request) {
         return ResponseEntity.ok(lopHocPhanService.update(id, request));
     }
 

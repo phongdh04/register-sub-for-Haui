@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { API_BASE_URL, authHeaders } from '../config/api';
 import { rememberStudentHocKy, resolveInitialStudentHocKyFromRows } from '../utils/studentSemesterPersistence';
@@ -65,7 +66,10 @@ const StudentRegistrationPage = () => {
   const [loadingPre, setLoadingPre] = useState(false);
   const [sectionsFromPre, setSectionsFromPre] = useState({});
   const [loadingPreSections, setLoadingPreSections] = useState(false);
+  const [snapshotRows, setSnapshotRows] = useState([]);
+  const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const toastTimerRef = useRef(null);
+  const navigate = useNavigate();
 
   const showToast = (kind, title, detail) => {
     setToast({ kind, title, detail });
@@ -193,6 +197,34 @@ const StudentRegistrationPage = () => {
     }
   }, [hocKyId]);
 
+  const loadSnapshot = useCallback(async () => {
+    if (!hocKyId) return;
+    setLoadingSnapshot(true);
+    try {
+      const qs = `?hocKyId=${encodeURIComponent(hocKyId)}`;
+      const res = await fetch(`${API_BASE_URL}/api/v1/timetable/me/snapshot${qs}`, {
+        headers: authHeaders()
+      });
+      const body = await parseJson(res);
+      if (!res.ok) throw new Error();
+      setSnapshotRows(safeArray(body.entries ?? body));
+    } catch {
+      setSnapshotRows([]);
+    } finally {
+      setLoadingSnapshot(false);
+    }
+  }, [hocKyId]);
+
+  const parseJson = async (res) => {
+    const t = await res.text();
+    if (!t) return {};
+    try {
+      return JSON.parse(t);
+    } catch {
+      return {};
+    }
+  };
+
   const loadClasses = useCallback(
     async (page = 0) => {
       if (!hocKyId) return;
@@ -250,7 +282,8 @@ const StudentRegistrationPage = () => {
     loadWindowStatus();
     loadMine();
     loadPreIntents();
-  }, [hocKyId, loadWindowStatus, loadMine, loadPreIntents]);
+    loadSnapshot();
+  }, [hocKyId, loadWindowStatus, loadMine, loadPreIntents, loadSnapshot]);
 
   /** Khi trạng thái cửa sổ cập nhật (vd. admin mới mở pha OFFICIAL) — tải lại PRE intent khớp hocKy hiện tại. */
   useEffect(() => {
@@ -384,6 +417,9 @@ const StudentRegistrationPage = () => {
       if (!res.ok) throw new Error(errMsg(body, 'Không đăng ký được.'));
       setRegistered(safeArray(body.items));
       if (windowStatus?.preDangKyDangMo) await loadClasses(classesPage.page);
+
+      /* Poll snapshot — projection chạy async sau transaction commit (1-3s) */
+      await reloadSnapshotWithRetry(lhp.maLopHp);
       showToast('ok', 'Đăng ký thành công', `${lhp.maLopHp} — ${lhp.tenHocPhan}`);
     } catch (e) {
       showToast('error', 'Đăng ký thất bại', e.message || 'Lỗi không xác định.');
@@ -391,6 +427,37 @@ const StudentRegistrationPage = () => {
       setBusyId(null);
     }
   };
+
+  /** Retry polling snapshot cho đến khi môn vừa đăng ký xuất hiện (max ~8s). */
+  async function reloadSnapshotWithRetry(maLopHpTarget) {
+    const maxAttempts = 8;
+    for (let i = 0; i < maxAttempts; i++) {
+      await delay((i + 1) * 600);
+      try {
+        const qs = `?hocKyId=${encodeURIComponent(hocKyId)}`;
+        const res = await fetch(`${API_BASE_URL}/api/v1/timetable/me/snapshot${qs}`, {
+          headers: authHeaders()
+        });
+        const body = await parseJson(res);
+        if (!res.ok) continue;
+        const rows = safeArray(body.entries ?? body);
+        const found = rows.find(
+          (r) => r.maLopHp === maLopHpTarget || r.idLopHp == lhp?.idLopHp
+        );
+        if (found) {
+          setSnapshotRows(rows);
+          return;
+        }
+        setSnapshotRows(rows);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   const handleCancel = async (item) => {
     if (!item?.idDangKy) return;
@@ -408,6 +475,7 @@ const StudentRegistrationPage = () => {
       const refresh = [];
       refresh.push(loadMine());
       if (windowStatus?.preDangKyDangMo) refresh.push(loadClasses(classesPage.page));
+      refresh.push(loadSnapshot());
       await Promise.all(refresh);
       showToast('ok', 'Đã hủy đăng ký', item.maLopHp);
     } catch (e) {
@@ -886,6 +954,53 @@ const StudentRegistrationPage = () => {
             )}
           </div>
 
+          {/* Mini timetable — hien thi lich hoc tu snapshot */}
+          <div className="rounded-2xl bg-surface-container overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-2">
+              <h3 className="text-sm font-bold text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                Lịch học trong tuần
+              </h3>
+              {snapshotRows.length > 0 && (
+                <span className="text-xs text-on-surface-variant font-medium">
+                  {snapshotRows.length} buổi
+                </span>
+              )}
+            </div>
+
+            {loadingSnapshot ? (
+              <div className="px-5 pb-4">
+                <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                  Đang tải lịch học…
+                </div>
+              </div>
+            ) : snapshotRows.length === 0 ? (
+              <div className="px-5 pb-4">
+                <p className="text-xs text-on-surface-variant italic leading-relaxed">
+                  Chưa có lịch học.{' '}
+                  {registered.length > 0
+                    ? 'Lịch sẽ hiển thị sau khi đăng ký hoàn tất (1-3s).'
+                    : 'Hãy đăng ký lớp học phần trước.'}
+                </p>
+              </div>
+            ) : (
+              <div className="px-2 pb-3">
+                <MiniTimetable entries={snapshotRows} />
+                <div className="px-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/student/timetable')}
+                    className="w-full py-2 rounded-lg bg-surface-container-lowest text-xs font-bold text-primary hover:bg-primary/10 transition flex items-center justify-center gap-1.5 border border-primary/20"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                    Xem lịch đầy đủ
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {windowStatus?.debugReason && !anyOpen && (
             <div className="rounded-2xl border border-error/30 bg-error-container/20 p-4 text-xs leading-relaxed">
               <p className="font-bold text-error mb-1 flex items-center gap-2">
@@ -931,3 +1046,113 @@ const StudentRegistrationPage = () => {
 };
 
 export default StudentRegistrationPage;
+
+/* ── MiniTimetable ────────────────────────────────────────────────────────── */
+/** Hien thi lich hoc ngan gon trong aside panel. */
+const THU_LABELS = { 2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: 'T7', 8: 'CN' };
+const TIET_SHORT = {
+  1: '07:00', 2: '07:50', 3: '08:50', 4: '09:50', 5: '10:40',
+  6: '13:00', 7: '13:50', 8: '14:50', 9: '15:50', 10: '16:40',
+  11: '18:00', 12: '18:50'
+};
+
+const THEMES = [
+  'bg-primary-fixed/70',
+  'bg-tertiary-fixed/70',
+  'bg-secondary-fixed/70',
+  'bg-error-fixed/70',
+  'bg-outline/70',
+];
+const THEMES_ON = [
+  'text-on-primary-fixed',
+  'text-on-tertiary-fixed',
+  'text-on-secondary-fixed',
+  'text-on-error-fixed',
+  'text-on-surface',
+];
+
+/** Gom cac slot cung lop-thu-tiet thanh 1 block de hien thi compact. */
+function groupSlots(entries) {
+  const map = {};
+  for (const e of entries) {
+    const key = `${e.idLopHp ?? ''}_${e.thu}_${e.tiet}`;
+    if (!map[key]) {
+      map[key] = { ...e, count: 1 };
+    } else {
+      map[key].count++;
+    }
+  }
+  return Object.values(map);
+}
+
+function parseTiet(tiet) {
+  if (tiet == null) return { start: 1, span: 1 };
+  const s = String(tiet).replace(/[^0-9\-–]/g, '').split(/[-–]/);
+  const a = Number(s[0]) || 1;
+  const b = s.length > 1 ? Number(s[1]) || a : a;
+  return {
+    start: Math.min(Math.max(a, 1), 12),
+    span: Math.max(1, Math.min(b - a + 1, 13 - a))
+  };
+}
+
+function MiniTimetable({ entries = [] }) {
+  const grouped = useMemo(() => groupSlots(entries), [entries]);
+
+  const byThu = useMemo(() => {
+    const map = {};
+    for (const g of grouped) {
+      const thu = Number(g.thu) || 2;
+      if (!map[thu]) map[thu] = [];
+      map[thu].push(g);
+    }
+    for (const thu of Object.keys(map)) {
+      map[thu].sort((a, b) => {
+        const pa = parseTiet(a.tiet);
+        const pb = parseTiet(b.tiet);
+        return pa.start - pb.start;
+      });
+    }
+    return map;
+  }, [grouped]);
+
+  const sortedThus = Object.keys(byThu).map(Number).sort((a, b) => a - b);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {sortedThus.map((thu) => (
+        <div key={thu}>
+          <div className="px-3 pt-1 pb-0.5">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+              {THU_LABELS[thu] || `T${thu}`}
+            </span>
+          </div>
+          <div className="space-y-1 px-1">
+            {byThu[thu].map((g, idx) => {
+              const themeIdx = Math.abs(Number(g.idLopHp || 0) + idx) % THEMES.length;
+              const { span } = parseTiet(g.tiet);
+              return (
+                <div
+                  key={`${g.idLopHp}_${g.tiet}_${idx}`}
+                  className={`rounded-md px-2 py-1 ${THEMES[themeIdx]} ${THEMES_ON[themeIdx]}`}
+                  style={{ minHeight: `${Math.max(span, 1) * 22 + 4}px` }}
+                >
+                  <p className="text-[10px] font-bold leading-tight truncate">
+                    {g.tenHocPhan || g.maHocPhan || '—'}
+                  </p>
+                  <p className="text-[9px] opacity-75 leading-tight">
+                    {TIET_SHORT[parseTiet(g.tiet).start] || g.tiet}
+                    {g.phong ? ` · ${g.phong}` : ''}
+                    {g.tenGiangVien ? ` · ${g.tenGiangVien.split(' ').slice(-1)[0]}` : ''}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

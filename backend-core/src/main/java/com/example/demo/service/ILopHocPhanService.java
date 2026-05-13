@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.payload.request.LopHocPhanRequest;
 import com.example.demo.payload.response.LopHocPhanResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -11,6 +13,7 @@ import java.util.List;
  */
 public interface ILopHocPhanService {
     List<LopHocPhanResponse> getAllByHocKy(Long idHocKy);
+    Page<LopHocPhanResponse> getAllByHocKyPaged(Long idHocKy, Pageable pageable);
     LopHocPhanResponse getById(Long id);
     LopHocPhanResponse create(LopHocPhanRequest request);
     LopHocPhanResponse update(Long id, LopHocPhanRequest request);

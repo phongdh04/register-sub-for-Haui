@@ -2,6 +2,9 @@ package com.example.demo.service;
 
 import com.example.demo.payload.request.KhoaRequest;
 import com.example.demo.payload.response.KhoaResponse;
+import com.example.demo.payload.response.PagedResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -12,6 +15,7 @@ import java.util.List;
  */
 public interface IKhoaService {
     List<KhoaResponse> getAll();
+    Page<KhoaResponse> getAllPaged(Pageable pageable);
     KhoaResponse getById(Long id);
     KhoaResponse create(KhoaRequest request);
     KhoaResponse update(Long id, KhoaRequest request);

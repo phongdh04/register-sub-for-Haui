@@ -22,6 +22,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Cấu hình cửa sổ thời gian đăng ký theo cohort/ngành cho từng học kỳ.
@@ -74,6 +75,15 @@ public class RegistrationWindow {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_nganh")
     private NganhDaoTao nganhDaoTao;
+
+    /**
+     * Campaign cha — nullable.
+     * Nếu có, window này được tạo tự động khi admin tạo campaign.
+     * Nếu null, window được tạo thủ công bằng API cũ.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_campaign")
+    private RegistrationCampaign campaign;
 
     @Column(name = "open_at", nullable = false)
     private Instant openAt;

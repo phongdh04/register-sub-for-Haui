@@ -27,7 +27,12 @@ BEGIN
     -- 3. TẠO CHƯƠNG TRÌNH ĐÀO TẠO
     INSERT INTO chuong_trinh_dao_tao (id_nganh, tong_so_tin_chi, thoi_gian_giang_day, doi_tuong_tuyen_sinh, muc_tieu, nam_ap_dung)
     VALUES (v_id_nganh, 140, '4 năm', 'Tốt nghiệp THPT hoặc tương đương', 'Trang bị kiến thức, kỹ năng, thái độ, năng lực ngoại ngữ/tin học đáp ứng vị trí việc làm sau tốt nghiệp.', 2023)
+    ON CONFLICT DO NOTHING
     RETURNING id_ctdt INTO v_id_ctdt;
+
+    IF v_id_ctdt IS NULL THEN
+        SELECT id_ctdt INTO v_id_ctdt FROM chuong_trinh_dao_tao WHERE id_nganh = v_id_nganh ORDER BY nam_ap_dung DESC LIMIT 1;
+    END IF;
 
     -- 4. INSERT HỌC PHẦN (COURSES)
     -- Group Đại cương: Bắt buộc
@@ -162,7 +167,8 @@ BEGIN
     -- Mapping group Đại cương Bắt buộc
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
     SELECT v_id_ctdt, id_hoc_phan, 'DAI_CUONG', true, 1
-    FROM hoc_phan WHERE ma_hoc_phan IN ('LP6010', 'LP6011', 'LP6012', 'LP6013', 'LP6004', 'BS6018', 'LP6003', 'BS6002', 'BS6001', 'IT6016', 'BS6027', 'IT6035');
+    FROM hoc_phan WHERE ma_hoc_phan IN ('LP6010', 'LP6011', 'LP6012', 'LP6013', 'LP6004', 'BS6018', 'LP6003', 'BS6002', 'BS6001', 'IT6016', 'BS6027', 'IT6035')
+    ON CONFLICT DO NOTHING;
 
     -- Mapping group Đại Cương Tự chọn (Ngoại ngữ, GDTC, QPAN, CNTT 1-2-3)
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
@@ -173,22 +179,26 @@ BEGIN
         'QP6001', 'QP6002', 'QP6003', 'QP6004',
         'TC6011', 'TC6012', 'TC6013', 'TC6014', 'TC6015', 'TC6016', 'TC6017',
         'TC6031', 'TC6032', 'TC6033'
-    );
+    )
+    ON CONFLICT DO NOTHING;
 
     -- Mapping group Cơ sở ngành Bắt buộc
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
     SELECT v_id_ctdt, id_hoc_phan, 'CO_SO_NGANH', true, 3
-    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6011', 'IT6015', 'IT6126', 'IT6067', 'IT6120', 'IT6001', 'IT6002', 'IT6083', 'IT6082', 'IT6066', 'IT6071', 'IT6100', 'IT6039', 'IT6121', 'IT6094', 'IT6056');
+    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6011', 'IT6015', 'IT6126', 'IT6067', 'IT6120', 'IT6001', 'IT6002', 'IT6083', 'IT6082', 'IT6066', 'IT6071', 'IT6100', 'IT6039', 'IT6121', 'IT6094', 'IT6056')
+    ON CONFLICT DO NOTHING;
 
     -- Mapping group Cơ sở ngành Tự chọn
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
     SELECT v_id_ctdt, id_hoc_phan, 'CO_SO_NGANH', false, 5
-    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6050', 'IT6051', 'IT6052', 'IT6053', 'IT6054');
+    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6050', 'IT6051', 'IT6052', 'IT6053', 'IT6054')
+    ON CONFLICT DO NOTHING;
 
     -- Mapping group Chuyên ngành
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
     SELECT v_id_ctdt, id_hoc_phan, 'CHUYEN_NGANH', true, 6
-    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6123', 'IT6122', 'IT6013', 'IT6029', 'IT6034');
+    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6123', 'IT6122', 'IT6013', 'IT6029', 'IT6034')
+    ON CONFLICT DO NOTHING;
 
     -- Mapping group Chuyên ngành Tự Chọn
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
@@ -196,11 +206,13 @@ BEGIN
     FROM hoc_phan WHERE ma_hoc_phan IN (
         'IT6060', 'IT6061', 'IT6062', 'IT6063', 'IT6064', 'IT6065', 'IT6068', 'IT6069', 'IT6070',
         'IT6075', 'IT6076', 'IT6077', 'IT6078', 'IT6079', 'IT6080', 'IT6084', 'IT6085'
-    );
+    )
+    ON CONFLICT DO NOTHING;
 
     -- Mapping group Đồ án (Cuối khoá)
     INSERT INTO ctdt_hoc_phan (id_ctdt, id_hoc_phan, khoi_kien_thuc, bat_buoc, hoc_ky_goi_y)
     SELECT v_id_ctdt, id_hoc_phan, 'CHUYEN_NGANH', true, 8
-    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6129', 'IT6128');
+    FROM hoc_phan WHERE ma_hoc_phan IN ('IT6129', 'IT6128')
+    ON CONFLICT DO NOTHING;
 
 END $$;

@@ -7,6 +7,8 @@ import com.example.demo.repository.KhoaRepository;
 import com.example.demo.service.IKhoaService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,13 @@ public class KhoaServiceImpl implements IKhoaService {
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<KhoaResponse> getAllPaged(Pageable pageable) {
+        return khoaRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
     @Override

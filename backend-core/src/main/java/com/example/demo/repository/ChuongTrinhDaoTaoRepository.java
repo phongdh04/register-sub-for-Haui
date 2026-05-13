@@ -11,11 +11,12 @@ import java.util.Optional;
 @Repository
 public interface ChuongTrinhDaoTaoRepository extends JpaRepository<ChuongTrinhDaoTao, Long> {
 
-    @Query("""
-            SELECT c FROM ChuongTrinhDaoTao c
-            WHERE c.nganhDaoTao.idNganh = :nganhId
-            ORDER BY c.namApDung DESC
-            """)
+    @Query(value = """
+            SELECT * FROM chuong_trinh_dao_tao
+            WHERE id_nganh = :nganhId
+            ORDER BY nam_ap_dung DESC
+            LIMIT 1
+            """, nativeQuery = true)
     Optional<ChuongTrinhDaoTao> findLatestByNganh(@Param("nganhId") Long nganhId);
 }
 

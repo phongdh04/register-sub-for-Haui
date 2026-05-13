@@ -9,6 +9,8 @@ import com.example.demo.repository.NganhDaoTaoRepository;
 import com.example.demo.service.INganhDaoTaoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,12 @@ public class NganhDaoTaoServiceImpl implements INganhDaoTaoService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<NganhDaoTaoResponse> getAllPaged(Pageable pageable) {
+        return nganhRepository.findAll(pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public NganhDaoTaoResponse getById(Long id) {
         return toResponse(findOrThrow(id));
     }
@@ -44,6 +52,12 @@ public class NganhDaoTaoServiceImpl implements INganhDaoTaoService {
     public List<NganhDaoTaoResponse> getByKhoa(Long idKhoa) {
         return nganhRepository.findByKhoa_IdKhoa(idKhoa)
                 .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<NganhDaoTaoResponse> getByKhoaPaged(Long idKhoa, Pageable pageable) {
+        return nganhRepository.findByKhoa_IdKhoa(idKhoa, pageable).map(this::toResponse);
     }
 
     @Override

@@ -7,7 +7,7 @@ const safe = (x) => (Array.isArray(x) ? x : []);
 const TABS = [
   {
     key: 'khoa', label: 'Khoa', icon: 'domain',
-    api: '/api/khoa', idField: 'idKhoa',
+    api: '/api/khoa', pagedApi: '/api/khoa/paged', idField: 'idKhoa', paged: true,
     columns: [
       { key: 'maKhoa', label: 'Mã Khoa', mono: true },
       { key: 'tenKhoa', label: 'Tên Khoa' },
@@ -21,7 +21,7 @@ const TABS = [
   },
   {
     key: 'nganh', label: 'Ngành ĐT', icon: 'school',
-    api: '/api/nganh-dao-tao', idField: 'idNganh',
+    api: '/api/nganh-dao-tao', pagedApi: '/api/nganh-dao-tao/paged', idField: 'idNganh', paged: true,
     columns: [
       { key: 'maNganh', label: 'Mã ngành', mono: true },
       { key: 'tenNganh', label: 'Tên ngành' },
@@ -37,7 +37,7 @@ const TABS = [
   },
   {
     key: 'hocphan', label: 'Học Phần', icon: 'menu_book',
-    api: '/api/hoc-phan', idField: 'idHocPhan',
+    api: '/api/hoc-phan', pagedApi: '/api/hoc-phan/paged', idField: 'idHocPhan', paged: true,
     columns: [
       { key: 'maHocPhan', label: 'Mã HP', mono: true },
       { key: 'tenHocPhan', label: 'Tên HP' },
@@ -54,7 +54,7 @@ const TABS = [
   },
   {
     key: 'giangvien', label: 'Giảng Viên', icon: 'person',
-    api: '/api/giang-vien', idField: 'idGiangVien',
+    api: '/api/giang-vien', pagedApi: '/api/giang-vien/paged', idField: 'idGiangVien', paged: true,
     columns: [
       { key: 'maGiangVien', label: 'Mã GV', mono: true },
       { key: 'tenGiangVien', label: 'Họ tên' },
@@ -73,7 +73,7 @@ const TABS = [
   },
   {
     key: 'phong', label: 'Phòng Học', icon: 'meeting_room',
-    api: '/api/v1/admin/phong', idField: 'idPhong', paged: true,
+    api: '/api/v1/admin/phong', idField: 'idPhong', paged: true, pagedQuery: true,
     columns: [
       { key: 'maPhong', label: 'Mã phòng', mono: true },
       { key: 'tenPhong', label: 'Tên phòng' },
@@ -94,7 +94,7 @@ const TABS = [
   },
   {
     key: 'lop', label: 'Lớp HC', icon: 'groups',
-    api: '/api/lop', idField: 'idLop',
+    api: '/api/lop', pagedApi: '/api/lop/paged', idField: 'idLop', paged: true,
     columns: [
       { key: 'maLop', label: 'Mã lớp', mono: true },
       { key: 'tenLop', label: 'Tên lớp' },
@@ -110,7 +110,7 @@ const TABS = [
   },
   {
     key: 'sinhvien', label: 'Sinh Viên', icon: 'badge',
-    api: '/api/sinh-vien', idField: 'idSinhVien',
+    api: '/api/sinh-vien', pagedApi: '/api/sinh-vien/paged', idField: 'idSinhVien', paged: true,
     columns: [
       { key: 'maSinhVien', label: 'MSSV', mono: true },
       { key: 'hoTen', label: 'Họ tên' },
@@ -126,7 +126,7 @@ const TABS = [
   },
   {
     key: 'ctdt', label: 'CTĐT', icon: 'auto_stories',
-    api: '/api/chuong-trinh-dao-tao', idField: 'idCtdt',
+    api: '/api/chuong-trinh-dao-tao', pagedApi: '/api/chuong-trinh-dao-tao/paged', idField: 'idCtdt', paged: true,
     columns: [
       { key: 'tenNganh', label: 'Ngành' },
       { key: 'tongSoTinChi', label: 'Tổng TC', center: true },
@@ -161,11 +161,129 @@ const TABS = [
       { key: 'batBuoc', label: 'Bắt buộc', type: 'select', options: ['true', 'false'] },
       { key: 'hocKyGoiY', label: 'Học kỳ gợi ý (1-8)', type: 'number', min: 1 },
     ],
-    /* CT-HP uses POST/DELETE only, custom API paths */
     customCreate: true,
     customDeletePath: (id) => `/api/chuong-trinh-dao-tao/hoc-phan/${id}`,
   },
+  {
+    key: 'tksv', label: 'TK Sinh Viên', icon: 'school',
+    api: '/api/v1/admin/tai-khoan/sinh-vien', idField: 'id', paged: true, pagedQuery: true,
+    columns: [
+      { key: 'username', label: 'Username', mono: true },
+      { key: 'maSinhVien', label: 'Mã SV', mono: true },
+      { key: 'hoTenSinhVien', label: 'Họ tên' },
+      { key: 'trangThai', label: 'Trạng thái', center: true, render: (v) => v === 'ACTIVE' ? '✓ Hoạt động' : '✗ Khóa' },
+      { key: 'mfaBat', label: 'MFA', center: true, render: (v) => v ? 'Bật' : 'Tắt' },
+    ],
+    fields: [
+      { key: 'username', label: 'Username', required: true, max: 50 },
+      { key: 'password', label: 'Mật khẩu', required: true },
+      { key: 'sinhVienId', label: 'Sinh viên', type: 'ref', refTab: 'sinhvien', refId: 'idSinhVien', refLabel: 'hoTen' },
+      { key: 'mfaBat', label: 'Bật MFA', type: 'select', options: ['false', 'true'] },
+    ],
+  },
+  {
+    key: 'tkgv', label: 'TK Giảng Viên', icon: 'person',
+    api: '/api/v1/admin/tai-khoan/giang-vien', idField: 'id', paged: true, pagedQuery: true,
+    columns: [
+      { key: 'username', label: 'Username', mono: true },
+      { key: 'maGiangVien', label: 'Mã GV', mono: true },
+      { key: 'tenGiangVien', label: 'Họ tên' },
+      { key: 'trangThai', label: 'Trạng thái', center: true, render: (v) => v === 'ACTIVE' ? '✓ Hoạt động' : '✗ Khóa' },
+      { key: 'mfaBat', label: 'MFA', center: true, render: (v) => v ? 'Bật' : 'Tắt' },
+    ],
+    fields: [
+      { key: 'username', label: 'Username', required: true, max: 50 },
+      { key: 'password', label: 'Mật khẩu', required: true },
+      { key: 'giangVienId', label: 'Giảng viên', type: 'ref', refTab: 'giangvien', refId: 'idGiangVien', refLabel: 'tenGiangVien' },
+      { key: 'mfaBat', label: 'Bật MFA', type: 'select', options: ['false', 'true'] },
+    ],
+  },
 ];
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 20;
+
+/* ─── Pagination Controls ─── */
+const PaginationControls = ({ page, totalPages, totalElements, pageSize, onPageChange, onPageSizeChange, loading }) => {
+  if (totalElements === 0) return null;
+
+  const maxButtons = 5;
+  let startPage = Math.max(0, page - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages - 1, startPage + maxButtons - 1);
+  if (endPage - startPage < maxButtons - 1) {
+    startPage = Math.max(0, endPage - maxButtons + 1);
+  }
+  const pageNumbers = [];
+  for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-[#f1f3ff] border-t border-[#dce2f7]">
+      <div className="flex items-center gap-2 text-xs text-[#64748b]">
+        <span>Hiển thị</span>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          disabled={loading}
+          className="bg-white border border-[#dce2f7] rounded-lg px-2 py-1 text-xs font-medium text-[#334155] focus:outline-none focus:border-[#00288e] disabled:opacity-50"
+        >
+          {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <span> / {totalElements.toLocaleString('vi-VN')} bản ghi</span>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(0)}
+          disabled={page === 0 || loading}
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#dce2f7] text-xs font-medium text-[#334155] hover:bg-[#dde1ff] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          title="Trang đầu"
+        >
+          ‹‹
+        </button>
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 0 || loading}
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#dce2f7] text-xs font-medium text-[#334155] hover:bg-[#dde1ff] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          title="Trang trước"
+        >
+          ‹
+        </button>
+
+        {pageNumbers.map((p) => (
+          <button
+            key={p}
+            onClick={() => onPageChange(p)}
+            disabled={loading}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-medium transition ${
+              p === page
+                ? 'bg-[#00288e] border-[#00288e] text-white'
+                : 'border-[#dce2f7] text-[#334155] hover:bg-[#dde1ff]'
+            } disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            {p + 1}
+          </button>
+        ))}
+
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages - 1 || loading}
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#dce2f7] text-xs font-medium text-[#334155] hover:bg-[#dde1ff] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          title="Trang sau"
+        >
+          ›
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages - 1)}
+          disabled={page >= totalPages - 1 || loading}
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#dce2f7] text-xs font-medium text-[#334155] hover:bg-[#dde1ff] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          title="Trang cuối"
+        >
+          ››
+        </button>
+      </div>
+    </div>
+  );
+};
 
 /* ─── Main Component ─── */
 const AdminDataMasterPage = () => {
@@ -180,9 +298,15 @@ const AdminDataMasterPage = () => {
   const [saving, setSaving] = useState(false);
   const [refData, setRefData] = useState({});
 
+  /* Pagination state */
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
   const tab = TABS.find((t) => t.key === activeTab) || TABS[0];
 
-  /* Load ref data for dropdowns (Khoa, Ngành, Lớp, HP, CTĐT) */
+  /* Load ref data for dropdowns (Khoa, Ngành, Lớp, HP, CTĐT) — always non-paged */
   const loadRefData = useCallback(async () => {
     const refs = [
       { key: 'khoa', url: '/api/khoa' },
@@ -202,31 +326,85 @@ const AdminDataMasterPage = () => {
 
   useEffect(() => { loadRefData(); }, [loadRefData]);
 
+  /* Reset pagination when tab changes */
+  useEffect(() => {
+    setPage(0);
+    setTotalPages(0);
+    setTotalElements(0);
+  }, [activeTab]);
+
   /* Load rows for current tab */
-  /* CT-HP tab: needs parentId (idCtdt) to fetch — use first CTDT or selected */
   const [ctdtFilter, setCtdtFilter] = useState(null);
   const loadRows = useCallback(async () => {
     setLoading(true);
     setErr('');
     try {
-      let url = `${API_BASE_URL}${tab.api}`;
-      /* CT-HP: GET /api/chuong-trinh-dao-tao/{id}/hoc-phan */
+      let url;
+
       if (tab.key === 'ctdthp') {
-        if (!ctdtFilter) { setRows([]); setLoading(false); return; }
+        if (!ctdtFilter) { setRows([]); setTotalElements(0); setLoading(false); return; }
         url = `${API_BASE_URL}/api/chuong-trinh-dao-tao/${ctdtFilter}/hoc-phan`;
+        const res = await fetch(url, { headers: authHeaders() });
+        const body = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(body.message || `Lỗi ${res.status}`);
+        setRows(safe(body));
+        setTotalElements(safe(body).length);
+        setTotalPages(1);
+        setLoading(false);
+        return;
       }
-      const res = await fetch(url, { headers: authHeaders() });
-      const body = await res.json().catch(() => []);
-      if (!res.ok) throw new Error(body.message || `Lỗi ${res.status}`);
-      setRows(tab.paged ? safe(body.content) : safe(body));
+
+      /* Paged tabs */
+      if (tab.paged) {
+        if (tab.pagedQuery) {
+          /* Paged via query params: GET /api/x?page=0&size=20 — returns raw Page object */
+          url = `${API_BASE_URL}${tab.api}?page=${page}&size=${pageSize}`;
+          const res = await fetch(url, { headers: authHeaders() });
+          const body = await res.json().catch(() => ({ content: [], totalElements: 0, totalPages: 1 }));
+          if (!res.ok) throw new Error(body.message || `Lỗi ${res.status}`);
+          setRows(safe(body.content));
+          setTotalElements(body.totalElements || 0);
+          setTotalPages(body.totalPages || 1);
+        } else {
+          /* Paged via /paged path: GET /api/x/paged?page=0&size=20 — returns PagedResponse */
+          url = `${API_BASE_URL}${tab.pagedApi}?page=${page}&size=${pageSize}`;
+          const res = await fetch(url, { headers: authHeaders() });
+          const body = await res.json().catch(() => ({ content: [], totalElements: 0 }));
+          if (!res.ok) throw new Error(body.message || `Lỗi ${res.status}`);
+          setRows(safe(body.content));
+          setTotalElements(body.totalElements || 0);
+          setTotalPages(body.totalPages || 1);
+        }
+      } else {
+        /* Non-paged fallback */
+        url = `${API_BASE_URL}${tab.api}`;
+        const res = await fetch(url, { headers: authHeaders() });
+        const body = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(body.message || `Lỗi ${res.status}`);
+        setRows(safe(body));
+        setTotalElements(safe(body).length);
+        setTotalPages(1);
+      }
     } catch (e) {
       setErr(e.message);
+      setRows([]);
+      setTotalElements(0);
     } finally {
       setLoading(false);
     }
-  }, [tab.api, tab.paged, tab.key, ctdtFilter]);
+  }, [tab.api, tab.paged, tab.pagedApi, tab.key, page, pageSize, ctdtFilter]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 0 || newPage >= totalPages) return;
+    setPage(newPage);
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setPage(0);
+  };
 
   /* Form helpers */
   const resetForm = () => { setPanelOpen(false); setEditId(null); setForm({}); };
@@ -258,9 +436,22 @@ const AdminDataMasterPage = () => {
         if (f.key === 'batBuoc') {
           payload[f.key] = payload[f.key] === 'true' || payload[f.key] === true;
         }
+        if (f.key === 'mfaBat') {
+          payload[f.key] = payload[f.key] === 'true' || payload[f.key] === true;
+        }
+        /* TK SV/GV: password optional on edit */
+        if ((tab.key === 'tksv' || tab.key === 'tkgv') && f.key === 'password' && payload[f.key] === '') {
+          delete payload[f.key];
+        }
+        /* Auto-set role for new account tabs */
+        if (tab.key === 'tksv' && f.key === 'username') {
+          payload.role = 'STUDENT';
+        }
+        if (tab.key === 'tkgv' && f.key === 'username') {
+          payload.role = 'LECTURER';
+        }
       });
       const isEdit = editId != null;
-      /* CT-HP tab: always POST, no PUT */
       let url, method;
       if (tab.customCreate) {
         url = `${API_BASE_URL}${tab.api}`;
@@ -334,7 +525,7 @@ const AdminDataMasterPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -353,7 +544,7 @@ const AdminDataMasterPage = () => {
       {/* Tabs */}
       <div className="flex border-b border-[#dce2f7] gap-1 overflow-x-auto">
         {TABS.map((t) => (
-          <button key={t.key} type="button" onClick={() => { setActiveTab(t.key); setMsg(''); setErr(''); }}
+          <button key={t.key} type="button" onClick={() => { setActiveTab(t.key); setMsg(''); setErr(''); setCtdtFilter(null); }}
             className={`flex items-center gap-1.5 px-4 pb-3 pt-1 text-sm font-semibold whitespace-nowrap transition border-b-2 ${activeTab === t.key ? 'text-[#00288e] border-[#00288e]' : 'text-[#64748b] border-transparent hover:text-[#141b2b]'}`}>
             <span className="material-symbols-outlined text-base">{t.icon}</span>{t.label}
           </button>
@@ -365,7 +556,7 @@ const AdminDataMasterPage = () => {
         <div className="flex items-center gap-3 bg-[#f1f3ff] rounded-xl px-4 py-3 border border-[#dce2f7]">
           <span className="text-sm font-semibold text-[#334155]">Chọn CTĐT:</span>
           <select className="bg-white rounded-lg py-2 px-3 text-sm border border-[#dce2f7] min-w-[300px]"
-            value={ctdtFilter || ''} onChange={(e) => setCtdtFilter(e.target.value ? Number(e.target.value) : null)}>
+            value={ctdtFilter || ''} onChange={(e) => { setCtdtFilter(e.target.value ? Number(e.target.value) : null); setPage(0); }}>
             <option value="">— Chọn CTĐT —</option>
             {safe(refData.ctdt).map((c) => <option key={c.idCtdt} value={c.idCtdt}>{c.tenNganh} (TC: {c.tongSoTinChi}, Năm: {c.namApDung || '—'})</option>)}
           </select>
@@ -375,7 +566,11 @@ const AdminDataMasterPage = () => {
       {/* Table */}
       <div className="bg-white rounded-xl border border-[#dce2f7] shadow-sm overflow-hidden">
         <div className="px-5 py-3 bg-[#f1f3ff] flex items-center justify-between">
-          <span className="text-sm font-semibold text-[#334155]">{rows.length} bản ghi</span>
+          <span className="text-sm font-semibold text-[#334155]">
+            {tab.paged && totalElements > 0
+              ? `Trang ${page + 1} / ${totalPages} — ${totalElements.toLocaleString('vi-VN')} bản ghi`
+              : `${rows.length} bản ghi`}
+          </span>
           <button type="button" onClick={loadRows} className="text-xs text-[#00288e] font-semibold hover:underline">Làm mới</button>
         </div>
         {loading ? (
@@ -383,33 +578,48 @@ const AdminDataMasterPage = () => {
         ) : rows.length === 0 ? (
           <div className="p-6 text-sm text-[#64748b]">Chưa có dữ liệu.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="bg-[#f1f3ff]">
-                  {tab.columns.map((c) => (
-                    <th key={c.key} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[#64748b] ${c.center ? 'text-center' : ''}`}>{c.label}</th>
-                  ))}
-                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[#64748b] text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#eef1fa]">
-                {rows.map((r) => (
-                  <tr key={r[tab.idField]} className="hover:bg-[#f9f9ff] transition">
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="bg-[#f1f3ff]">
                     {tab.columns.map((c) => (
-                      <td key={c.key} className={`px-4 py-3 ${c.mono ? 'font-mono text-[#00288e] font-semibold' : ''} ${c.center ? 'text-center' : ''}`}>
-                        {c.render ? c.render(r[c.key]) : (r[c.key] ?? '—')}
-                      </td>
+                      <th key={c.key} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[#64748b] ${c.center ? 'text-center' : ''}`}>{c.label}</th>
                     ))}
-                    <td className="px-4 py-3 text-right space-x-2">
-                      <button type="button" onClick={() => openEdit(r)} className="px-3 py-1 text-xs rounded-lg border border-[#dce2f7] hover:bg-[#dde1ff] font-semibold">Sửa</button>
-                      <button type="button" onClick={() => deleteRow(r[tab.idField])} className="px-3 py-1 text-xs rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold">Xóa</button>
-                    </td>
+                    <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[#64748b] text-right">Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#eef1fa]">
+                  {rows.map((r) => (
+                    <tr key={r[tab.idField]} className="hover:bg-[#f9f9ff] transition">
+                      {tab.columns.map((c) => (
+                        <td key={c.key} className={`px-4 py-3 ${c.mono ? 'font-mono text-[#00288e] font-semibold' : ''} ${c.center ? 'text-center' : ''}`}>
+                          {c.render ? c.render(r[c.key]) : (r[c.key] ?? '—')}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right space-x-2">
+                        <button type="button" onClick={() => openEdit(r)} className="px-3 py-1 text-xs rounded-lg border border-[#dce2f7] hover:bg-[#dde1ff] font-semibold">Sửa</button>
+                        <button type="button" onClick={() => deleteRow(r[tab.idField])} className="px-3 py-1 text-xs rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold">Xóa</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {tab.paged && (
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                totalElements={totalElements}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                loading={loading}
+              />
+            )}
+          </>
         )}
       </div>
 

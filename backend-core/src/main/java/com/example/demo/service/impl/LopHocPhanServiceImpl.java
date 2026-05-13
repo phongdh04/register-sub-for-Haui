@@ -19,6 +19,8 @@ import com.example.demo.service.ITkbRevisionService;
 import com.example.demo.service.LopHocPhongDualWriteService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +57,12 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<LopHocPhanResponse> getAllByHocKyPaged(Long idHocKy, Pageable pageable) {
+        return lopHocPhanRepository.findByHocKy_IdHocKy(idHocKy, pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public LopHocPhanResponse getById(Long id) {
         return toResponse(findOrThrow(id));
     }
@@ -86,7 +94,7 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
                 .siSoToiDa(request.getSiSoToiDa())
                 .siSoThucTe(0)
                 .hocPhi(request.getHocPhi())
-                .trangThai("CHUA_MO") // Chưa phát hành - Admin phải gọi publishLop() riêng
+                .trangThai("CHUA_MO")
                 .thoiKhoaBieuJson(request.getThoiKhoaBieuJson())
                 .build();
         lopHocPhongDualWriteService.synchronize(lhp);
@@ -133,23 +141,14 @@ public class LopHocPhanServiceImpl implements ILopHocPhanService {
         tkbRevisionService.bumpAfterTkbMutation(hkId);
     }
 
-    /**
-     * Phát hành lớp: Chuyển trạng thái sang DANG_MO.
-     * OCP: Khi thêm Redis warm-up, chỉ cần inject RedisService và gọi thêm ở đây.
-     *      Không cần sửa method create() hay logic nghiệp vụ cũ.
-     */
     @Override
     @Transactional
     public LopHocPhanResponse publishLop(Long id) {
         LopHocPhan lhp = findOrThrow(id);
         lhp.setTrangThai("DANG_MO");
-        // TODO (Task P0-Queue): redisService.warmUpSlot(lhp.getMaLopHp(), lhp.getSiSoToiDa());
         return toResponse(lopHocPhanRepository.save(lhp));
     }
 
-    /**
-     * Khóa lớp không cho đăng ký thêm (Admin kill switch).
-     */
     @Override
     @Transactional
     public LopHocPhanResponse closeLop(Long id) {

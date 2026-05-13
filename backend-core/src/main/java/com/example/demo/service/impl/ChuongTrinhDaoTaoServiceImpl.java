@@ -15,6 +15,8 @@ import com.example.demo.repository.NganhDaoTaoRepository;
 import com.example.demo.service.IChuongTrinhDaoTaoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,12 @@ public class ChuongTrinhDaoTaoServiceImpl implements IChuongTrinhDaoTaoService {
     @Transactional(readOnly = true)
     public List<ChuongTrinhDaoTaoResponse> getAll() {
         return ctdtRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ChuongTrinhDaoTaoResponse> getAllPaged(Pageable pageable) {
+        return ctdtRepository.findAll(pageable).map(this::toResponse);
     }
 
     @Override

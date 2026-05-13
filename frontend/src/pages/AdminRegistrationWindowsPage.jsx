@@ -71,8 +71,200 @@ function statusMeta(row, nowTs = Date.now()) {
   return { tone: 'end', label: 'Hết hạn', dot: '' };
 }
 
-/** Quản lý cửa sổ đăng ký — /api/v1/admin/registration-windows */
+/* ─── CampaignTab component ─── */
+const CampaignTab = ({
+  campaigns,
+  loading,
+  loadErr,
+  onEdit,
+  onDelete,
+  campaignDeleteId,
+  onConfirmDelete,
+  campaignDeleteBusy,
+  onCancelDelete
+}) => {
+  const windowsCount = (c) => safeArray(c.windows).length;
+
+  return (
+    <>
+      {loadErr && (
+        <div className="mb-4 rounded-xl border border-error/30 bg-error-container/40 p-4 text-sm text-error">{loadErr}</div>
+      )}
+
+      <div className="overflow-hidden rounded-xl bg-surface-container-lowest pb-4 shadow-[0_20px_40px_rgba(20,27,43,0.05)]">
+        {loading ? (
+          <div className="p-8 text-sm text-on-surface-variant">Đang tải…</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-0 text-sm font-semibold uppercase tracking-[0.05em] text-on-surface-variant">
+                  <th className="px-6 py-5">Tên chiến dịch</th>
+                  <th className="px-6 py-5">Khóa</th>
+                  <th className="px-6 py-5">Pha</th>
+                  <th className="px-6 py-5">Thời gian</th>
+                  <th className="px-6 py-5">Trạng thái</th>
+                  <th className="px-6 py-5">Học kỳ được tạo</th>
+                  <th className="px-6 py-5 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {campaigns.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-on-surface-variant">
+                      Chưa có chiến dịch nào.
+                    </td>
+                  </tr>
+                )}
+                {campaigns.map((c, idx) => {
+                  const pg = computeProgress(c.openAt, c.closeAt);
+                  const zebra = idx % 2 === 1;
+                  const ended = Date.now() > new Date(c.closeAt).getTime();
+                  const nowTs = Date.now();
+                  const o = new Date(c.openAt).getTime();
+                  const isActive = c.dangMo || (nowTs >= o && nowTs <= new Date(c.closeAt).getTime());
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`group transition-colors hover:bg-surface-container-low ${zebra ? 'bg-surface-container-low/50' : ''} ${ended ? 'opacity-70' : ''}`}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-on-surface">{c.tenCampaign || '—'}</div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {safeArray(c.windows).map((w) => (
+                            <span
+                              key={w.id}
+                              className="inline-flex items-center rounded-full bg-surface-container px-2 py-0.5 text-xs text-on-surface-variant"
+                            >
+                              <span className="mr-1 material-symbols-outlined text-[10px]">schedule</span>
+                              {w.phase === 'OFFICIAL' ? 'OFF' : 'PRE'}
+                              {w.namNhapHoc != null ? ` K${w.namNhapHoc}` : ''}
+                              {w.tenNganh ? ` · ${w.tenNganh}` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {c.namNhapHoc != null ? (
+                          <span className="font-medium text-on-surface">K{c.namNhapHoc}</span>
+                        ) : (
+                          <span className="text-on-surface-variant">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${
+                          c.phase === 'OFFICIAL'
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-secondary/10 text-secondary'
+                        }`}>
+                          {c.phase === 'OFFICIAL' ? 'OFFICIAL' : 'PRE-REG'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1 text-on-surface-variant text-xs">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                            {formatInstantVi(c.openAt)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">schedule</span>
+                            {formatInstantVi(c.closeAt)}
+                          </span>
+                          <div className="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-surface-container-high">
+                            <div
+                              className={`h-full rounded-full ${ended ? 'bg-outline-variant' : 'bg-primary'}`}
+                              style={{ width: `${pg.pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-on-surface-variant">{pg.sub}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {isActive && !ended ? (
+                          <span className="inline-flex w-max items-center gap-1 rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-on-primary-fixed">
+                            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                            Đang mở
+                          </span>
+                        ) : ended ? (
+                          <span className="inline-flex w-max items-center gap-1 rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-on-surface-variant">
+                            Hết hạn
+                          </span>
+                        ) : (
+                          <span className="inline-flex w-max items-center gap-1 rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-primary">
+                            Sắp mở
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-on-surface-variant">{c.tenHocKy || c.hocKyTen || '—'}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                          <button
+                            type="button"
+                            title="Sửa"
+                            className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                            onClick={() => onEdit(c)}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            title="Xóa"
+                            className="rounded-full p-2 text-on-surface-variant hover:bg-error-container hover:text-error"
+                            onClick={() => onDelete(c.id)}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Campaign delete confirmation */}
+      {campaignDeleteId != null && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-inverse-surface/50 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-xl bg-inverse-surface px-6 py-4 text-inverse-on-surface shadow-[0_20px_40px_rgba(20,27,43,0.12)]">
+            <div className="flex gap-4">
+              <span className="material-symbols-outlined text-error-container">warning</span>
+              <div>
+                <p className="font-semibold">Xóa chiến dịch?</p>
+                <p className="mt-1 text-sm opacity-80">Tất cả các cửa sổ liên quan cũng sẽ bị xóa.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-md px-4 py-2 text-sm font-semibold hover:bg-white/10"
+                onClick={onCancelDelete}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={campaignDeleteBusy}
+                className="rounded-md px-4 py-2 text-sm font-semibold text-error hover:bg-error-container/20"
+                onClick={onConfirmDelete}
+              >
+                {campaignDeleteBusy ? 'Đang xóa…' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+/* ─── Main page component ─── */
 const AdminRegistrationWindowsPage = () => {
+  const [tab, setTab] = useState('windows'); // 'windows' | 'campaigns'
   const [hocKys, setHocKys] = useState([]);
   const [hocKyId, setHocKyId] = useState('');
   const [phaseFilter, setPhaseFilter] = useState('PRE');
@@ -107,6 +299,23 @@ const AdminRegistrationWindowsPage = () => {
   const [quickDays, setQuickDays] = useState(30);
   const [quickBusy, setQuickBusy] = useState(false);
   const [forceBusy, setForceBusy] = useState(false);
+
+  // Campaign state
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignLoading, setCampaignLoading] = useState(false);
+  const [campaignLoadErr, setCampaignLoadErr] = useState('');
+  const [campaignDrawerOpen, setCampaignDrawerOpen] = useState(false);
+  const [campaignEditing, setCampaignEditing] = useState(null);
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const [campaignFormErr, setCampaignFormErr] = useState('');
+  const [cFNam, setCFNam] = useState('');
+  const [cFPhase, setCFPhase] = useState('OFFICIAL');
+  const [cFOpen, setCFOpen] = useState('');
+  const [cFClose, setCFClose] = useState('');
+  const [cFGhiChu, setCFGhiChu] = useState('');
+  const [cFTen, setCFTen] = useState('');
+  const [campaignDeleteId, setCampaignDeleteId] = useState(null);
+  const [campaignDeleteBusy, setCampaignDeleteBusy] = useState(false);
 
   const showToast = (k, t, d) => {
     setToast({ kind: k, title: t, detail: d });
@@ -182,6 +391,124 @@ const AdminRegistrationWindowsPage = () => {
   useEffect(() => {
     loadWindows();
   }, [loadWindows]);
+
+  // ---- Campaign loaders ----
+  const loadCampaigns = useCallback(async () => {
+    setCampaignLoading(true);
+    setCampaignLoadErr('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/registration-campaigns`, {
+        headers: authHeaders()
+      });
+      const body = await parseBody(res);
+      if (!res.ok) throw new Error(errMsg(body, 'Không tải chiến dịch.'));
+      setCampaigns(safeArray(body));
+    } catch (e) {
+      setCampaignLoadErr(e.message || 'Lỗi tải chiến dịch.');
+    } finally {
+      setCampaignLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'campaigns') {
+      loadCampaigns();
+    }
+  }, [tab, loadCampaigns]);
+
+  const openCampaignCreate = () => {
+    setCampaignEditing(null);
+    setCampaignFormErr('');
+    setCFTen('');
+    setCFNam('');
+    setCFPhase('OFFICIAL');
+    const now = new Date();
+    setCFOpen(toLocalDatetimeValue(now));
+    setCFClose(toLocalDatetimeValue(new Date(now.getTime() + 30 * 86400000)));
+    setCFGhiChu('');
+    setCampaignDrawerOpen(true);
+  };
+
+  const openCampaignEdit = (c) => {
+    setCampaignEditing(c);
+    setCampaignFormErr('');
+    setCFTen(c.tenCampaign || '');
+    setCFNam(c.namNhapHoc != null ? String(c.namNhapHoc) : '');
+    setCFPhase(c.phase === 'OFFICIAL' ? 'OFFICIAL' : 'PRE');
+    setCFOpen(toLocalDatetimeValue(new Date(c.openAt)));
+    setCFClose(toLocalDatetimeValue(new Date(c.closeAt)));
+    setCFGhiChu(c.ghiChu || '');
+    setCampaignDrawerOpen(true);
+  };
+
+  const submitCampaignForm = async () => {
+    if (!cFTen.trim()) {
+      setCampaignFormErr('Tên chiến dịch không được để trống.');
+      return;
+    }
+    const namNum = Number(cFNam.trim());
+    if (!cFNam.trim() || !Number.isFinite(namNum) || namNum < 2000 || namNum > 2100) {
+      setCampaignFormErr('Năm nhập học phải dạng YYYY (ví dụ 2024).');
+      return;
+    }
+    const openIso = fromLocalDatetimeValue(cFOpen);
+    const closeIso = fromLocalDatetimeValue(cFClose);
+    if (!openIso || !closeIso || new Date(closeIso) <= new Date(openIso)) {
+      setCampaignFormErr('Thời gian không hợp lệ: đóng lúc phải sau mở lúc.');
+      return;
+    }
+    const payload = {
+      tenCampaign: cFTen.trim(),
+      namNhapHoc: Math.trunc(namNum),
+      phase: cFPhase,
+      openAt: openIso,
+      closeAt: closeIso,
+      ghiChu: cFGhiChu?.trim() || undefined
+    };
+    setCampaignSaving(true);
+    setCampaignFormErr('');
+    try {
+      const url = campaignEditing
+        ? `${API_BASE_URL}/api/v1/admin/registration-campaigns/${campaignEditing.id}`
+        : `${API_BASE_URL}/api/v1/admin/registration-campaigns`;
+      const res = await fetch(url, {
+        method: campaignEditing ? 'PUT' : 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const body = await parseBody(res);
+      if (!res.ok) throw new Error(errMsg(body, 'Không lưu được.'));
+      setCampaignDrawerOpen(false);
+      await loadCampaigns();
+      showToast('ok', 'Đã lưu', campaignEditing ? 'Chiến dịch đã cập nhật.' : 'Chiến dịch đã tạo + windows tự động sinh.');
+    } catch (e) {
+      setCampaignFormErr(e.message || 'Lỗi lưu.');
+    } finally {
+      setCampaignSaving(false);
+    }
+  };
+
+  const doCampaignDelete = async () => {
+    if (!campaignDeleteId) return;
+    setCampaignDeleteBusy(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/registration-campaigns/${campaignDeleteId}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) {
+        const body = await parseBody(res);
+        throw new Error(errMsg(body, 'Không xóa được.'));
+      }
+      setCampaignDeleteId(null);
+      await loadCampaigns();
+      showToast('ok', 'Đã xóa', 'Chiến dịch và các cửa sổ liên quan đã gỡ.');
+    } catch (e) {
+      showToast('err', 'Lỗi', e.message);
+    } finally {
+      setCampaignDeleteBusy(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -415,233 +742,279 @@ const AdminRegistrationWindowsPage = () => {
 
   return (
     <div className="mx-auto max-w-6xl text-on-surface">
-      <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h2 className="mb-2 text-2xl font-bold tracking-tight text-on-surface md:text-3xl">Quản lý Cửa sổ Đăng ký</h2>
           <p className="text-sm text-on-surface-variant">Thiết lập và theo dõi các đợt mở đăng ký học phần (PRE / OFFICIAL).</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setQuickPhase('OFFICIAL');
-              setQuickNam('');
-              setQuickIdNganh('');
-              setQuickDays(30);
-              setQuickOpen(true);
-            }}
-            disabled={!hocKyId}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow hover:bg-primary-container transition disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[20px]">flash_on</span>
-            Mở đăng ký NGAY
-          </button>
-          <button
-            type="button"
-            onClick={forcePublishAll}
-            disabled={!hocKyId || forceBusy}
-            className="inline-flex items-center gap-2 rounded-full bg-tertiary px-5 py-3 text-sm font-semibold text-white shadow hover:opacity-90 transition disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[20px]">publish</span>
-            {forceBusy ? 'Đang mở…' : 'Mở tất cả lớp'}
-          </button>
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={!hocKyId}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#00288e] to-[#1e40af] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(20,27,43,0.12)] transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              add_circle
-            </span>
-            Tạo cửa sổ mới
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-8 flex flex-col gap-4 rounded-xl bg-surface-container-low p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:max-w-xs">
-            <select
-              className="w-full cursor-pointer appearance-none rounded-lg border-none bg-surface-container-lowest py-3 pl-4 pr-10 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
-              value={hocKyId}
-              onChange={(e) => setHocKyId(e.target.value)}
+          {tab === 'campaigns' && (
+            <button
+              type="button"
+              onClick={openCampaignCreate}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#00288e] to-[#1e40af] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(20,27,43,0.12)] transition-opacity hover:opacity-90"
             >
-              {hocKys.length === 0 && <option value="">—</option>}
-              {hocKys.map((hk) => {
-                const id = hk.idHocKy ?? hk.id;
-                return (
-                  <option key={id} value={String(id)}>
-                    {hk.tenHocKy || hk.ten || id}
-                  </option>
-                );
-              })}
-            </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined">
-              expand_more
-            </span>
-          </div>
-          <div className="flex gap-1 rounded-lg bg-surface-container-lowest p-1 shadow-sm">
-            {[
-              ['PRE', 'PRE'],
-              ['OFFICIAL', 'OFFICIAL'],
-              ['', 'Tất cả']
-            ].map(([v, lab]) => (
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                add_circle
+              </span>
+              Tạo chiến dịch
+            </button>
+          )}
+          {tab === 'windows' && (
+            <>
               <button
-                key={v || 'all'}
                 type="button"
-                onClick={() => setPhaseFilter(v)}
-                className={`rounded-md px-4 py-2 text-xs font-semibold uppercase transition-colors ${
-                  phaseFilter === v
-                    ? 'bg-surface-container-high text-primary'
-                    : 'font-medium text-on-surface-variant hover:bg-surface-container'
-                }`}
+                onClick={() => {
+                  setQuickPhase('OFFICIAL');
+                  setQuickNam('');
+                  setQuickIdNganh('');
+                  setQuickDays(30);
+                  setQuickOpen(true);
+                }}
+                disabled={!hocKyId}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow hover:bg-primary-container transition disabled:opacity-50"
               >
-                {lab}
+                <span className="material-symbols-outlined text-[20px]">flash_on</span>
+                Mở đăng ký NGAY
               </button>
-            ))}
-          </div>
-        </div>
-        <div className="relative w-full lg:max-w-sm">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
-            search
-          </span>
-          <input
-            className="w-full rounded-lg border-none bg-surface-container-lowest py-3 pl-10 pr-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="Tìm ngành, ghi chú, mã pha…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+              <button
+                type="button"
+                onClick={forcePublishAll}
+                disabled={!hocKyId || forceBusy}
+                className="inline-flex items-center gap-2 rounded-full bg-tertiary px-5 py-3 text-sm font-semibold text-white shadow hover:opacity-90 transition disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[20px]">publish</span>
+                {forceBusy ? 'Đang mở…' : 'Mở tất cả lớp'}
+              </button>
+              <button
+                type="button"
+                onClick={openCreate}
+                disabled={!hocKyId}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#00288e] to-[#1e40af] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(20,27,43,0.12)] transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  add_circle
+                </span>
+                Tạo cửa sổ mới
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {loadErr && (
-        <div className="mb-4 rounded-xl border border-error/30 bg-error-container/40 p-4 text-sm text-error">{loadErr}</div>
+      {/* Tab bar */}
+      <div className="mb-6 flex gap-1 rounded-xl bg-surface-container-lowest p-1 w-fit shadow-sm">
+        {[
+          ['windows', 'Cửa sổ'],
+          ['campaigns', 'Chiến dịch theo khóa']
+        ].map(([v, lab]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setTab(v)}
+            className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-all ${
+              tab === v
+                ? 'bg-surface-container-high text-primary shadow-sm'
+                : 'text-on-surface-variant hover:bg-surface-container-low'
+            }`}
+          >
+            {lab}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'campaigns' ? (
+        <CampaignTab
+          campaigns={campaigns}
+          loading={campaignLoading}
+          loadErr={campaignLoadErr}
+          onEdit={openCampaignEdit}
+          onDelete={(id) => setCampaignDeleteId(id)}
+          campaignDeleteId={campaignDeleteId}
+          onConfirmDelete={doCampaignDelete}
+          campaignDeleteBusy={campaignDeleteBusy}
+          onCancelDelete={() => setCampaignDeleteId(null)}
+        />
+      ) : (
+        <>
+          {/* Filter bar */}
+          <div className="mb-8 flex flex-col gap-4 rounded-xl bg-surface-container-low p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+              <div className="relative">
+                <select
+                  className="appearance-none rounded-lg border-none bg-surface-container-low py-3 pl-4 pr-10 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                  value={hocKyId}
+                  onChange={(e) => setHocKyId(e.target.value)}
+                >
+                  {hocKys.map((hk) => {
+                    const id = hk.idHocKy ?? hk.id;
+                    return (
+                      <option key={id} value={String(id)}>
+                        {hk.tenHocKy || hk.ten}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined">
+                  expand_more
+                </span>
+              </div>
+              <div className="flex gap-1 rounded-lg bg-surface-container-lowest p-1 shadow-sm">
+                {[
+                  ['PRE', 'PRE'],
+                  ['OFFICIAL', 'OFFICIAL'],
+                  ['', 'Tất cả']
+                ].map(([v, lab]) => (
+                  <button
+                    key={v || 'all'}
+                    type="button"
+                    onClick={() => setPhaseFilter(v)}
+                    className={`rounded-md px-4 py-2 text-xs font-semibold uppercase transition-colors ${
+                      phaseFilter === v
+                        ? 'bg-surface-container-high text-primary'
+                        : 'font-medium text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    {lab}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="relative w-full lg:max-w-sm">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                search
+              </span>
+              <input
+                className="w-full rounded-lg border-none bg-surface-container-lowest py-3 pl-10 pr-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Tìm ngành, ghi chú, mã pha…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {loadErr && (
+            <div className="mb-4 rounded-xl border border-error/30 bg-error-container/40 p-4 text-sm text-error">{loadErr}</div>
+          )}
+
+          <div className="overflow-hidden rounded-xl bg-surface-container-lowest pb-4 shadow-[0_20px_40px_rgba(20,27,43,0.05)]">
+            {loading ? (
+              <div className="p-8 text-sm text-on-surface-variant">Đang tải…</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-0 text-sm font-semibold uppercase tracking-[0.05em] text-on-surface-variant">
+                      <th className="px-6 py-5">Pha</th>
+                      <th className="px-6 py-5">Phạm vi Khóa / Ngành</th>
+                      <th className="px-6 py-5">Thời gian Mở — Đóng</th>
+                      <th className="px-6 py-5">Tiến trình</th>
+                      <th className="px-6 py-5">Trạng thái</th>
+                      <th className="px-6 py-5 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm">
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-10 text-center text-on-surface-variant">
+                          Không có cửa sổ nào. Chọn học kỳ hoặc tạo mới.
+                        </td>
+                      </tr>
+                    )}
+                    {filtered.map((r, idx) => {
+                      const pg = computeProgress(r.openAt, r.closeAt);
+                      const st = statusMeta(r);
+                      const ended = legacyEnded(r);
+                      const zebra = idx % 2 === 1;
+                      return (
+                        <tr
+                          key={r.id}
+                          className={`group transition-colors hover:bg-surface-container-low ${zebra ? 'bg-surface-container-low/50' : ''} ${ended ? 'opacity-70' : ''}`}
+                        >
+                          <td className="px-6 py-4">{phaseChip(r.phase)}</td>
+                          <td className="px-6 py-4">{scopeText(r)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-1 text-on-surface-variant text-sm">
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                                {formatInstantVi(r.openAt)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">schedule</span>
+                                {formatInstantVi(r.closeAt)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="w-52 px-6 py-4">
+                            <div className="relative h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+                              <div
+                                className={`h-2 rounded-full ${ended ? 'bg-outline-variant' : 'bg-primary'}`}
+                                style={{ width: `${pg.pct}%` }}
+                              />
+                              {pg.pct > 0 && pg.pct < 100 && !ended && (
+                                <div
+                                  className="absolute top-0 z-10 h-full w-0.5 bg-secondary-container"
+                                  style={{ left: `${pg.pct}%` }}
+                                />
+                              )}
+                            </div>
+                            <div
+                              className={`mt-1 text-xs ${pg.pct >= 100 ? 'text-right' : pg.pct === 0 ? 'text-left' : 'text-right'} text-on-surface-variant`}
+                            >
+                              {pg.sub}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {st.tone === 'open' && (
+                              <span className="inline-flex w-max items-center gap-1 rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-on-primary-fixed">
+                                <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                                Đang mở
+                              </span>
+                            )}
+                            {st.tone === 'soon' && (
+                              <span className="inline-flex w-max items-center gap-1 rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-primary">
+                                Sắp mở
+                              </span>
+                            )}
+                            {st.tone === 'end' && (
+                              <span className="inline-flex w-max items-center gap-1 rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-on-surface-variant">
+                                Hết hạn
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                              <button
+                                type="button"
+                                title="Sửa"
+                                disabled={ended}
+                                className={`rounded-full p-2 ${ended ? 'cursor-not-allowed text-outline-variant' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-primary'}`}
+                                onClick={() => !ended && openEdit(r)}
+                              >
+                                <span className="material-symbols-outlined text-[20px]">edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                title="Xóa"
+                                className="rounded-full p-2 text-on-surface-variant hover:bg-error-container hover:text-error"
+                                onClick={() => setDeleteId(r.id)}
+                              >
+                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
-      <div className="overflow-hidden rounded-xl bg-surface-container-lowest pb-4 shadow-[0_20px_40px_rgba(20,27,43,0.05)]">
-        {loading ? (
-          <div className="p-8 text-sm text-on-surface-variant">Đang tải…</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-0 text-sm font-semibold uppercase tracking-[0.05em] text-on-surface-variant">
-                  <th className="px-6 py-5">Pha</th>
-                  <th className="px-6 py-5">Phạm vi Khóa / Ngành</th>
-                  <th className="px-6 py-5">Thời gian Mở — Đóng</th>
-                  <th className="px-6 py-5">Tiến trình</th>
-                  <th className="px-6 py-5">Trạng thái</th>
-                  <th className="px-6 py-5 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-on-surface-variant">
-                      Không có cửa sổ nào. Chọn học kỳ hoặc tạo mới.
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((r, idx) => {
-                  const pg = computeProgress(r.openAt, r.closeAt);
-                  const st = statusMeta(r);
-                  const ended = legacyEnded(r);
-                  const zebra = idx % 2 === 1;
-                  return (
-                    <tr
-                      key={r.id}
-                      className={`group transition-colors hover:bg-surface-container-low ${zebra ? 'bg-surface-container-low/50' : ''} ${ended ? 'opacity-70' : ''}`}
-                    >
-                      <td className="px-6 py-4">{phaseChip(r.phase)}</td>
-                      <td className="px-6 py-4">{scopeText(r)}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1 text-on-surface-variant text-sm">
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                            {formatInstantVi(r.openAt)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[16px]">schedule</span>
-                            {formatInstantVi(r.closeAt)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="w-52 px-6 py-4">
-                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
-                          <div
-                            className={`h-2 rounded-full ${ended ? 'bg-outline-variant' : 'bg-primary'}`}
-                            style={{ width: `${pg.pct}%` }}
-                          />
-                          {pg.pct > 0 && pg.pct < 100 && !ended && (
-                            <div
-                              className="absolute top-0 z-10 h-full w-0.5 bg-secondary-container"
-                              style={{ left: `${pg.pct}%` }}
-                            />
-                          )}
-                        </div>
-                        <div
-                          className={`mt-1 text-xs ${pg.pct >= 100 ? 'text-right' : pg.pct === 0 ? 'text-left' : 'text-right'} text-on-surface-variant`}
-                        >
-                          {pg.sub}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {st.tone === 'open' && (
-                          <span className="inline-flex w-max items-center gap-1 rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-on-primary-fixed">
-                            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
-                            Đang mở
-                          </span>
-                        )}
-                        {st.tone === 'soon' && (
-                          <span className="inline-flex w-max items-center gap-1 rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-primary">
-                            Sắp mở
-                          </span>
-                        )}
-                        {st.tone === 'end' && (
-                          <span className="inline-flex w-max items-center gap-1 rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-on-surface-variant">
-                            Hết hạn
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                          <button
-                            type="button"
-                            title="Xem nhanh"
-                            className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
-                            onClick={() => openEdit(r)}
-                          >
-                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                          </button>
-                          <button
-                            type="button"
-                            title="Sửa"
-                            disabled={ended}
-                            className={`rounded-full p-2 ${ended ? 'cursor-not-allowed text-outline-variant' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-primary'}`}
-                            onClick={() => !ended && openEdit(r)}
-                          >
-                            <span className="material-symbols-outlined text-[20px]">edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            title="Xóa"
-                            className="rounded-full p-2 text-on-surface-variant hover:bg-error-container hover:text-error"
-                            onClick={() => setDeleteId(r.id)}
-                          >
-                            <span className="material-symbols-outlined text-[20px]">delete</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
+      {/* Windows drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-inverse-surface/40 backdrop-blur-sm">
           <div className="flex h-full w-full max-w-md flex-col bg-surface-container-lowest p-8 shadow-[0_20px_40px_rgba(20,27,43,0.08)]">
@@ -795,6 +1168,7 @@ const AdminRegistrationWindowsPage = () => {
         </div>
       )}
 
+      {/* Quick open dialog */}
       {quickOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-[0_20px_40px_rgba(20,27,43,0.08)] overflow-hidden">
@@ -899,6 +1273,7 @@ const AdminRegistrationWindowsPage = () => {
         </div>
       )}
 
+      {/* Windows delete confirmation */}
       {deleteId != null && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-inverse-surface/50 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-xl bg-inverse-surface px-6 py-4 text-inverse-on-surface shadow-[0_20px_40px_rgba(20,27,43,0.12)]">
@@ -926,6 +1301,136 @@ const AdminRegistrationWindowsPage = () => {
         </div>
       )}
 
+      {/* Campaign form drawer */}
+      {campaignDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-inverse-surface/40 backdrop-blur-sm">
+          <div className="flex h-full w-full max-w-md flex-col bg-surface-container-lowest p-8 shadow-[0_20px_40px_rgba(20,27,43,0.08)]">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-on-surface">
+                {campaignEditing != null ? 'Sửa chiến dịch' : 'Tạo chiến dịch mới'}
+              </h3>
+              <button
+                type="button"
+                className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high"
+                onClick={() => setCampaignDrawerOpen(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="flex-1 space-y-5 overflow-y-auto pr-1">
+              {campaignFormErr && (
+                <div className="rounded-lg bg-error-container/40 p-3 text-sm text-error">{campaignFormErr}</div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-on-surface">
+                  Tên chiến dịch <span className="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-lg border-none bg-surface-container-low py-3 px-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="VD: Đợt 1 - K17"
+                  value={cFTen}
+                  onChange={(e) => setCFTen(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-on-surface">
+                  Năm nhập học (YYYY) <span className="text-error">*</span>
+                </label>
+                <input
+                  type="number"
+                  className="w-full rounded-lg border-none bg-surface-container-low py-3 px-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="VD: 2024"
+                  value={cFNam}
+                  onChange={(e) => setCFNam(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-on-surface">
+                  Pha <span className="text-error">*</span>
+                </label>
+                <div className="flex gap-1 rounded-lg bg-surface-container-low p-1">
+                  <button
+                    type="button"
+                    className={`flex-1 rounded-md py-2 text-xs font-semibold ${
+                      cFPhase === 'PRE' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                    onClick={() => setCFPhase('PRE')}
+                  >
+                    PRE
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex-1 rounded-md py-2 text-xs font-semibold ${
+                      cFPhase === 'OFFICIAL' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                    onClick={() => setCFPhase('OFFICIAL')}
+                  >
+                    OFFICIAL
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-on-surface">
+                  Thời gian mở <span className="text-error">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-lg border-none bg-surface-container-low py-3 px-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                  value={cFOpen}
+                  onChange={(e) => setCFOpen(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-on-surface">
+                  Thời gian đóng <span className="text-error">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-lg border-none bg-surface-container-low py-3 px-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                  value={cFClose}
+                  onChange={(e) => setCFClose(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-on-surface">Ghi chú</label>
+                <textarea
+                  rows={3}
+                  className="w-full resize-none rounded-lg border-none bg-surface-container-low py-3 px-4 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Nhập ghi chú (nếu có)…"
+                  value={cFGhiChu}
+                  onChange={(e) => setCFGhiChu(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3 border-t border-outline-variant/20 pt-6">
+              <button
+                type="button"
+                className="rounded-full px-6 py-3 text-sm font-semibold text-primary hover:bg-surface-container-low"
+                onClick={() => setCampaignDrawerOpen(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={campaignSaving}
+                onClick={submitCampaignForm}
+                className="rounded-full bg-gradient-to-br from-[#00288e] to-[#1e40af] px-8 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(20,27,43,0.12)] hover:opacity-90 disabled:opacity-50"
+              >
+                {campaignSaving ? 'Đang lưu…' : 'Lưu chiến dịch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-[70] max-w-sm rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm shadow-lg">
           <p className="font-bold text-on-surface">{toast.title}</p>

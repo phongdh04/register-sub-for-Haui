@@ -2,9 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.payload.request.GiangVienRequest;
 import com.example.demo.payload.response.GiangVienResponse;
+import com.example.demo.payload.response.PagedResponse;
 import com.example.demo.service.IGiangVienService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +33,13 @@ public class GiangVienController {
         return ResponseEntity.ok(giangVienService.getAll());
     }
 
+    @GetMapping("/paged")
+    public ResponseEntity<PagedResponse<GiangVienResponse>> getAllPaged(
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<GiangVienResponse> page = giangVienService.getAllPaged(pageable);
+        return ResponseEntity.ok(PagedResponse.of(page));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<GiangVienResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(giangVienService.getById(id));
@@ -37,6 +48,14 @@ public class GiangVienController {
     @GetMapping("/khoa/{idKhoa}")
     public ResponseEntity<List<GiangVienResponse>> getByKhoa(@PathVariable Long idKhoa) {
         return ResponseEntity.ok(giangVienService.getByKhoa(idKhoa));
+    }
+
+    @GetMapping("/khoa/{idKhoa}/paged")
+    public ResponseEntity<PagedResponse<GiangVienResponse>> getByKhoaPaged(
+            @PathVariable Long idKhoa,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<GiangVienResponse> page = giangVienService.getByKhoaPaged(idKhoa, pageable);
+        return ResponseEntity.ok(PagedResponse.of(page));
     }
 
     @PostMapping

@@ -2,9 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.payload.request.KhoaRequest;
 import com.example.demo.payload.response.KhoaResponse;
+import com.example.demo.payload.response.PagedResponse;
 import com.example.demo.service.IKhoaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,6 +40,13 @@ public class KhoaController {
         return ResponseEntity.ok(khoaService.getAll());
     }
 
+    @GetMapping("/paged")
+    public ResponseEntity<PagedResponse<KhoaResponse>> getAllPaged(
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<KhoaResponse> page = khoaService.getAllPaged(pageable);
+        return ResponseEntity.ok(PagedResponse.of(page));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<KhoaResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(khoaService.getById(id));
@@ -50,7 +61,7 @@ public class KhoaController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<KhoaResponse> update(@PathVariable Long id,
-                                                @Valid @RequestBody KhoaRequest request) {
+                                               @Valid @RequestBody KhoaRequest request) {
         return ResponseEntity.ok(khoaService.update(id, request));
     }
 
